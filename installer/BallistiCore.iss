@@ -39,7 +39,7 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
-; SetupIconFile=assets\BallistiCore.ico   ; (optional) add an icon then uncomment
+SetupIconFile=assets\BallistiCore.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -69,16 +69,18 @@ Source: "launcher\Stop BallistiCore.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "launcher\scripts\*";             DestDir: "{app}\scripts"; Flags: ignoreversion
 ; ── Client README ──────────────────────────────────────────────────────────
 Source: "README.txt"; DestDir: "{app}"; Flags: ignoreversion isreadme
+; ── App icon (used by the shortcuts) ───────────────────────────────────────
+Source: "assets\BallistiCore.ico"; DestDir: "{app}"; Flags: ignoreversion
 ; ── Default branding (kept only if the user folder has none yet) ───────────
 Source: "payload\backend\branding.json"; DestDir: "{app}\backend"; Flags: ignoreversion onlyifdoesntexist
 
 [Icons]
-Name: "{group}\{#AppName}";            Filename: "{app}\BallistiCore.bat";      WorkingDir: "{app}"; Comment: "Start BallistiCore and open it in your browser"
-Name: "{group}\Stop {#AppName}";       Filename: "{app}\Stop BallistiCore.bat"; WorkingDir: "{app}"
+Name: "{group}\{#AppName}";            Filename: "{app}\BallistiCore.bat";      WorkingDir: "{app}"; IconFilename: "{app}\BallistiCore.ico"; Comment: "Start BallistiCore and open it in your browser"
+Name: "{group}\Stop {#AppName}";       Filename: "{app}\Stop BallistiCore.bat"; WorkingDir: "{app}"; IconFilename: "{app}\BallistiCore.ico"
 Name: "{group}\BallistiCore README";   Filename: "{app}\README.txt"
 Name: "{group}\Uninstall {#AppName}";  Filename: "{uninstallexe}"
-Name: "{userdesktop}\{#AppName}";      Filename: "{app}\BallistiCore.bat";      WorkingDir: "{app}"; Tasks: desktopicon
-Name: "{userstartup}\{#AppName}";      Filename: "{app}\BallistiCore.bat";      WorkingDir: "{app}"; Tasks: startupicon
+Name: "{userdesktop}\{#AppName}";      Filename: "{app}\BallistiCore.bat";      WorkingDir: "{app}"; IconFilename: "{app}\BallistiCore.ico"; Tasks: desktopicon
+Name: "{userstartup}\{#AppName}";      Filename: "{app}\BallistiCore.bat";      WorkingDir: "{app}"; IconFilename: "{app}\BallistiCore.ico"; Tasks: startupicon
 
 [Run]
 ; First-run database setup: initdb, create role/db, write .env, run migrations.
