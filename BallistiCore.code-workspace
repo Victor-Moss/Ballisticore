@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"name": "BallistiCore",
+			"path": "."
+		}
+	],
+	"settings": {
+		"python.defaultInterpreterPath": "./BallistiCore_app/backend/.venv/Scripts/python.exe",
+		"python.envFile": "./BallistiCore_app/backend/.env",
+		"editor.formatOnSave": true,
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/*.pyc": true,
+			"**/node_modules": true
+		}
+	}
+}

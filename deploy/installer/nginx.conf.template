@@ -1,0 +1,46 @@
+worker_processes 2;
+error_log  logs/error.log warn;
+pid        logs/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    keepalive_timeout 65;
+    client_max_body_size 25M;
+
+    server {
+        listen 80;
+        server_name _;
+
+        # Serve React frontend
+        root FRONTEND_PATH;
+        index index.html;
+
+        location / {
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Proxy API to FastAPI backend (loopback only)
+        location /api/ {
+            proxy_pass http://127.0.0.1:8000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_read_timeout 120s;
+        }
+
+        location /health {
+            proxy_pass http://127.0.0.1:8000;
+        }
+
+        # Cache static assets aggressively
+        location ~* \.(js|css|png|jpg|svg|ico|woff2?)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+}

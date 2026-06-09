@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 8pt; color: #000; }
+  .card {
+    width: 85mm; padding: 5mm;
+    border: 2px solid #000;
+  }
+  .card-header { text-align: center; border-bottom: 1px solid #000; padding-bottom: 3px; margin-bottom: 4px; }
+  .card-header .company { font-size: 8pt; font-weight: bold; }
+  .card-header .sub { font-size: 7pt; }
+  .card-header .title { font-size: 7.5pt; font-weight: bold; margin-top: 2px; }
+
+  .permit-no { text-align: right; font-size: 7pt; font-weight: bold; margin-bottom: 3px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  tr { border-bottom: 1px dotted #ccc; }
+  td { padding: 2px 3px; font-size: 7.5pt; vertical-align: top; }
+  td.label { font-weight: bold; white-space: nowrap; width: 42%; color: #333; }
+
+  .section { margin-top: 3px; border-top: 1px solid #888; padding-top: 2px; }
+  .section-title { font-size: 7pt; font-weight: bold; text-transform: uppercase;
+                   color: #555; margin-bottom: 2px; }
+  .auth-text { font-size: 6.5pt; font-style: italic; margin: 3px 0; text-align: center; }
+  .sig-line { border-bottom: 1px solid #000; height: 12px; display: block; }
+  .footer { font-size: 6pt; text-align: center; margin-top: 4px; color: #777;
+            border-top: 1px dotted #ccc; padding-top: 2px; }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="card-header">
+    <div class="company">{{ company_name }}</div>
+    <div class="sub">{{ company_reg }} &nbsp;|&nbsp; PSIRA #: {{ psira_number }}</div>
+    <div class="title">Authority to be in Possession of Company Firearm</div>
+    <div class="sub">{{ company_address }}</div>
+  </div>
+
+  <div class="permit-no">Permit: {{ permit.permit_number }}</div>
+
+  <div class="section">
+    <div class="section-title">Guard</div>
+    <table>
+      <tr><td class="label">Name:</td><td>{{ guard.first_name }} {{ guard.last_name }}</td></tr>
+      <tr><td class="label">ID #:</td><td>{{ guard.id_number }}</td></tr>
+      <tr><td class="label">Cell:</td><td>{{ guard.cell_phone or '—' }}</td></tr>
+    </table>
+  </div>
+
+  <div class="auth-text">Is hereby authorised to be in possession of the undermentioned firearm.</div>
+
+  <div class="section">
+    <div class="section-title">Firearm</div>
+    <table>
+      <tr><td class="label">Serial No:</td><td>{{ firearm.serial_number }}</td></tr>
+      <tr><td class="label">Make / Model:</td><td>{{ firearm.make }} {{ firearm.model or '' }}</td></tr>
+      <tr><td class="label">Calibre:</td><td>{{ firearm.calibre }}</td></tr>
+      <tr><td class="label">Type:</td><td>{{ firearm.type }}</td></tr>
+      <tr><td class="label">License No:</td><td>{{ firearm.license_number or '—' }}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Period</div>
+    <table>
+      <tr><td class="label">Date Issued:</td><td>{{ issued_date }}</td></tr>
+      <tr><td class="label">Time Issued:</td><td>{{ issued_time }}</td></tr>
+      <tr><td class="label">Valid Date:</td><td>{{ valid_date or '—' }}</td></tr>
+      <tr><td class="label">CIT Route:</td><td>{{ cit_route or '—' }}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Issued By</div>
+    <table>
+      <tr><td class="label">Name:</td><td>{{ issued_by_name }}</td></tr>
+      <tr><td class="label">Location:</td><td>{{ location_name or '—' }}</td></tr>
+      <tr>
+        <td class="label">Guard Sig:</td>
+        <td><span class="sig-line"></span></td>
+      </tr>
+      <tr>
+        <td class="label">Issuer Sig:</td>
+        <td><span class="sig-line"></span></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="footer">BallistiCore &mdash; {{ issued_date }}</div>
+</div>
+</body>
+</html>

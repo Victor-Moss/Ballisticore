@@ -1,0 +1,30 @@
+# ── Secrets / local config ──────────────────────────────────────────────────
+.env
+*.env
+!*.env.template
+!env*.template
+
+# ── Python ──────────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# ── Node / frontend build ───────────────────────────────────────────────────
+node_modules/
+dist/
+
+# ── Installer staging / output ──────────────────────────────────────────────
+installer/payload/
+installer/dist/
+
+# ── Runtime data (never source) ─────────────────────────────────────────────
+pgdata/
+permits/
+logs/
+backups/
+*.log
+
+# ── Editor / OS ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

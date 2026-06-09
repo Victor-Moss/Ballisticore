@@ -1,0 +1,32 @@
+So the firearms register's core purpose is to keep track of which security
+guard has which firearm. Traditionally we use a firearm register which is a
+book, so you can double book a firearm.
+
+There are two types of users: superusers which are admin users which will be
+able to capture security guards. These super users can also be security guards
+if they need to be.
+
+There are many different aspects to the database. You have a section where you
+can capture all the different firarms with their serial numbers. There's a
+different section where you can capture all the super users. There's a different
+section where you can capture all the security guards.
+
+The information includes: name, surname, ID number, cell phone number, email
+address, physical address, what firearms they are allowed to carry, which
+firearms they are not allowed to carry. You are also able to put these security
+guards in a location.
+
+If they leave the company, you just say "I'm not going to delete the security
+guard, I'm just going to keep their details." If they decide to come back to
+work next week, you can just reinstate their details instead of having to
+recapture everything.
+
+When you issue a firearm to a security guard, you have to say:
+- Which firearm you're issuing
+- To which guard is issuing
+- The system checks if that guard is allowed to carry that type of firearm
+- If approved, the system says the firearm is either available or unavailable
+- If the firearm is with another security guard, it's unavailable
+
+That information goes into the firearms register history and gets audited by
+the South African police service.
