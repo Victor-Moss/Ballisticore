@@ -21,7 +21,9 @@ set "PERMITS=%ROOT%\backend\permits"
 rem Network — loopback only; nothing is exposed off this machine by default.
 set "APP_HOST=127.0.0.1"
 set "APP_PORT=8000"
-set "PGPORT=5432"
+rem 5433 (not the default 5432) so the bundled DB won't clash with any
+rem PostgreSQL the client may already have installed on this PC.
+set "PGPORT=5433"
 
 rem Database identities
 set "PGSUPER=postgres"

@@ -31,7 +31,8 @@ service, no admin rights, and its data never leaves the folder.
 
 - Windows x64
 - [Node.js](https://nodejs.org) 20+ (to build the frontend)
-- [Inno Setup 6+](https://jrsoftware.org/isdl.php)
+- [Inno Setup 6.3+](https://jrsoftware.org/isdl.php) (the script uses the
+  `x64compatible` architecture identifier, added in 6.3)
 - PowerShell 5+
 
 ## Step 1 — Supply the two bundled runtimes
@@ -100,8 +101,10 @@ file to the client; see `README.txt` for their setup steps.
   installer needs no internet on the client machine.
 - **Data stays local:** the only outbound traffic is optional Twilio WhatsApp
   sends, and only when Twilio credentials are filled into `backend\.env`.
-- **Ports:** backend `8000`, PostgreSQL `5432` (loopback only). Change them in
-  `launcher\scripts\_env.bat` before building if they clash on the target.
+- **Ports:** backend `8000`, PostgreSQL `5433` (loopback only). PostgreSQL
+  intentionally uses 5433, not the default 5432, so the bundled instance won't
+  collide with any PostgreSQL the client already has. Change them in
+  `launcher\scripts\_env.bat` before building if they still clash on the target.
 - This supersedes the older nginx + NSSM-services approach in
   `deploy\installer\ArmsRegister.iss`, which is kept only for reference.
 

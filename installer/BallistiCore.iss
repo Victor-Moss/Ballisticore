@@ -37,8 +37,8 @@ WizardStyle=modern
 ; Per-user install: no admin rights needed, and the install folder is fully
 ; writable — required so PostgreSQL can own and write its data directory.
 PrivilegesRequired=lowest
-ArchitecturesAllowed=x64
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 ; SetupIconFile=assets\BallistiCore.ico   ; (optional) add an icon then uncomment
 
 [Languages]
