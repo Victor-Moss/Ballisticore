@@ -135,7 +135,24 @@ you edit the scripts:
 3. **Use `ping -n` for sleeps, not `timeout /t`** — `timeout` errors when stdin
    is redirected / non-interactive (e.g. run by the installer or a launcher).
 
-Still **unverified** (requires a Windows build box with the two bundled
-runtimes + Inno Setup): `build_payload.ps1`, the bundled-Python dependency
-install, and compiling `BallistiCore.iss`. The backend's single-process serving
-of the built UI (`FRONTEND_DIST`) was verified separately.
+### Compiled installer (icon build) — full end-to-end test PASSED
+
+The complete pipeline was built and tested on Windows: `build_payload.ps1`
+staged a relocatable Python 3.12 + the PostgreSQL 17 binaries + the built
+frontend/backend, deps installed into the bundled Python, and `ISCC` compiled
+`BallistiCore.iss` cleanly (no warnings) into a ~75 MB `Setup.exe`.
+
+That `Setup.exe` was then silently installed and exercised end-to-end:
+
+- **Branded icon** embedded in `Setup.exe`, installed to `{app}\BallistiCore.ico`,
+  and applied to the Start-menu / desktop / Stop shortcuts (`IconLocation`).
+- **First-run DB setup ran verbatim** (bundled Python + bundled PostgreSQL on
+  port 5433): `initdb`, role/db, `.env` with real secrets, all 11 Alembic
+  migrations.
+- **Launcher** started the bundled stack and served the app: `/health` 200
+  (`production`), React UI 200, `POST /api/auth/login` (admin/admin1234) 200.
+- **Stop** shut everything down; **uninstall** removed the app files and
+  shortcuts while preserving the data directories (`pgdata`, `.env`).
+
+(The 5433 default — rather than 5432 — was confirmed to let first-run setup
+complete on a machine that already has PostgreSQL installed.)
