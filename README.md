@@ -45,6 +45,16 @@ Admin → Users.
   data stays on the machine. The only outbound traffic is optional Twilio
   WhatsApp, and only when configured.
 
+## Screenshots
+
+**First-Time Setup wizard** — a guided 5-step first run with a progress indicator.
+
+![First-Time Setup wizard](docs/wizard.png)
+
+**Excel bulk import** (Admin → Import Data) — download the template, import in bulk, and see exactly which rows failed and why.
+
+![Excel bulk import](docs/import.png)
+
 ## How it runs
 
 A single FastAPI process serves both the JSON API and the React UI on
