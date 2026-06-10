@@ -7,6 +7,8 @@ stays on your premises.
 
 [![Latest release](https://img.shields.io/github/v/release/Victor-Moss/Ballisticore?sort=semver)](https://github.com/Victor-Moss/Ballisticore/releases/latest)
 
+![BallistiCore dashboard — key stats and recent activity](docs/dashboard.png)
+
 ## Download
 
 Get the latest Windows installer from the
