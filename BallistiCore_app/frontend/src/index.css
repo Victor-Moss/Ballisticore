@@ -69,3 +69,90 @@
            shadow-lg shadow-blue-600/20 transition-colors;
   }
 }
+
+/* ============================================================================
+   LIGHT THEME  (active when <html class="light">)
+   Remaps the dark slate palette to clean whites / light greys with dark text,
+   keeping the steel-blue accent. `html.light .x` outranks Tailwind's single
+   class utilities, so no component markup changes are needed. Dark stays the
+   default (no class).
+   ========================================================================== */
+html.light { color-scheme: light; }
+
+html.light body {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  background-image: radial-gradient(900px 500px at 100% -10%, rgba(37, 99, 235, 0.06), transparent 60%),
+                    radial-gradient(700px 500px at -10% 110%, rgba(37, 99, 235, 0.04), transparent 60%);
+}
+html.light ::selection { background: rgba(37, 99, 235, 0.18); color: #0f172a; }
+
+/* Form fields + chrome */
+html.light input, html.light textarea, html.light select { color: #0f172a; }
+html.light input::placeholder, html.light textarea::placeholder { color: #94a3b8; }
+html.light input[type="date"]::-webkit-calendar-picker-indicator,
+html.light input[type="time"]::-webkit-calendar-picker-indicator { filter: none; }
+html.light * { scrollbar-color: #cbd5e1 transparent; }
+html.light *::-webkit-scrollbar-thumb { background: #cbd5e1; }
+html.light *::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Component classes (composed via @apply — overridden directly) */
+html.light .bc-card { background-color: #ffffff; border-color: #e2e8f0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04); }
+html.light .bc-input { background-color: #ffffff; color: #0f172a; border-color: #cbd5e1; }
+html.light .bc-input::placeholder { color: #94a3b8; }
+html.light .bc-label { color: #475569; }
+
+/* Surfaces → light */
+html.light .bg-slate-950, html.light .bg-slate-950\/80,
+html.light .bg-slate-900, html.light .bg-slate-900\/70,
+html.light .bg-slate-800, html.light .bg-slate-800\/60, html.light .bg-slate-800\/70 { background-color: #ffffff; }
+html.light .bg-slate-900\/50 { background-color: #f8fafc; }
+html.light .bg-slate-800\/40 { background-color: #f1f5f9; }
+html.light .bg-slate-700, html.light .bg-slate-700\/50, html.light .bg-slate-700\/70 { background-color: #e2e8f0; }
+html.light .bg-slate-600 { background-color: #cbd5e1; }
+html.light .hover\:bg-\[\#243044\]:hover { background-color: #f1f5f9; }
+
+/* Borders → light */
+html.light .border-slate-700, html.light .border-slate-700\/70, html.light .border-slate-700\/60,
+html.light .border-slate-800, html.light .border-slate-800\/80, html.light .border-slate-800\/60 { border-color: #e2e8f0; }
+html.light .divide-slate-700 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-slate-700\/60 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0; }
+
+/* Text → dark hierarchy */
+html.light .text-white, html.light .text-slate-100 { color: #0f172a; }
+html.light .text-slate-200 { color: #1e293b; }
+html.light .text-slate-300 { color: #334155; }
+html.light .text-slate-400 { color: #475569; }
+html.light .text-slate-500 { color: #64748b; }
+html.light .text-slate-600 { color: #94a3b8; }
+html.light .hover\:text-white:hover, html.light .hover\:text-slate-100:hover { color: #0f172a; }
+html.light .hover\:text-slate-200:hover { color: #1e293b; }
+html.light .group:hover .group-hover\:text-slate-300 { color: #334155; }
+
+/* Accent text → readable on white (keeps the colours) */
+html.light .text-blue-400, html.light .text-blue-300, html.light .text-blue-200 { color: #2563eb; }
+html.light .text-green-400, html.light .text-green-300 { color: #16a34a; }
+html.light .text-red-400, html.light .text-red-300 { color: #dc2626; }
+html.light .text-amber-400, html.light .text-amber-300 { color: #d97706; }
+html.light .text-purple-400 { color: #9333ea; }
+
+/* Keep white text/icons on solid accent backgrounds (buttons, logo, badges) */
+html.light .bg-blue-600 .text-white,  html.light .bg-blue-600.text-white,
+html.light .bg-blue-700 .text-white,  html.light .bg-blue-700.text-white,
+html.light .bg-blue-500 .text-white,  html.light .bg-blue-500.text-white,
+html.light .bg-green-600 .text-white, html.light .bg-green-600.text-white,
+html.light .bg-green-700 .text-white, html.light .bg-green-700.text-white,
+html.light .bg-green-500 .text-white, html.light .bg-green-500.text-white,
+html.light .bg-red-600 .text-white,   html.light .bg-red-600.text-white,
+html.light .bg-red-500 .text-white,   html.light .bg-red-500.text-white,
+html.light .bg-amber-500 .text-white, html.light .bg-amber-500.text-white,
+html.light .bg-purple-500 .text-white,html.light .bg-purple-500.text-white,
+html.light .from-blue-500 .text-white { color: #ffffff; }
+
+/* Avatar gradient + subtle ring */
+html.light .from-slate-700 { --tw-gradient-from: #cbd5e1 var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(203 213 225 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.light .to-slate-800 { --tw-gradient-to: #94a3b8 var(--tw-gradient-to-position); }
+html.light .ring-white\/10 { --tw-ring-color: rgba(15, 23, 42, 0.08); }

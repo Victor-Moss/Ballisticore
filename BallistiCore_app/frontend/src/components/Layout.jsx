@@ -1,11 +1,27 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
+import { useTheme } from '../context/ThemeContext'
 import Logo from './Logo'
 import {
   LayoutDashboard, ClipboardList, Crosshair, Undo2, History,
-  FileText, Shield, Archive, Settings, LogOut,
+  FileText, Shield, Archive, Settings, LogOut, Sun, Moon,
 } from 'lucide-react'
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme()
+  const dark = theme === 'dark'
+  return (
+    <button
+      onClick={toggle}
+      title={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+      aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
+      className="grid place-items-center h-9 w-9 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+    >
+      {dark ? <Sun size={18} /> : <Moon size={18} />}
+    </button>
+  )
+}
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -103,8 +119,14 @@ export default function Layout({ children }) {
       </aside>
 
       {/* Main */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {/* Top navigation bar */}
+        <header className="h-12 shrink-0 flex items-center justify-end gap-1 px-4 border-b border-slate-800/60">
+          <ThemeToggle />
+        </header>
+        <div className="flex-1 overflow-y-auto">
+          {children}
+        </div>
       </main>
     </div>
   )
