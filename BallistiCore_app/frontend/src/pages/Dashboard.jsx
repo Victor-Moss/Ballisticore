@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getCurrentRegister } from '../api/register'
-import { getFirearms } from '../api/firearms'
-import { getGuards } from '../api/guards'
+import { getDashboard } from '../api/dashboard'
 import {
   Crosshair, CircleCheck, Archive, Shield, Undo2, ArrowRight, Loader2,
+  FileText, CalendarClock,
 } from 'lucide-react'
 
 const ACCENTS = {
-  red:   { icon: 'text-red-400',   ring: 'bg-red-500/10 ring-red-500/20' },
-  green: { icon: 'text-green-400', ring: 'bg-green-500/10 ring-green-500/20' },
-  blue:  { icon: 'text-blue-400',  ring: 'bg-blue-500/10 ring-blue-500/20' },
-  amber: { icon: 'text-amber-400', ring: 'bg-amber-500/10 ring-amber-500/20' },
+  red:    { icon: 'text-red-400',    ring: 'bg-red-500/10 ring-red-500/20' },
+  green:  { icon: 'text-green-400',  ring: 'bg-green-500/10 ring-green-500/20' },
+  blue:   { icon: 'text-blue-400',   ring: 'bg-blue-500/10 ring-blue-500/20' },
+  amber:  { icon: 'text-amber-400',  ring: 'bg-amber-500/10 ring-amber-500/20' },
+  purple: { icon: 'text-purple-400', ring: 'bg-purple-500/10 ring-purple-500/20' },
 }
 
 function StatCard({ label, value, icon: Icon, color = 'blue' }) {
@@ -23,28 +23,79 @@ function StatCard({ label, value, icon: Icon, color = 'blue' }) {
       </div>
       <div>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</p>
-        <p className="text-3xl font-bold text-white leading-tight mt-0.5">{value}</p>
+        <p className="text-3xl font-bold text-white leading-tight mt-0.5">{value ?? '—'}</p>
       </div>
     </div>
   )
 }
 
+// Relative "x ago" with a clean absolute fallback.
+function timeAgo(iso) {
+  const then = new Date(iso)
+  const secs = Math.round((Date.now() - then.getTime()) / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.round(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.round(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.round(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return then.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })
+}
+
+function ActivityTimeline({ items }) {
+  if (!items.length) {
+    return (
+      <div className="bc-card p-10 text-center">
+        <CircleCheck size={28} className="mx-auto text-slate-600 mb-2" />
+        <p className="text-slate-400 text-sm">No firearm activity yet</p>
+      </div>
+    )
+  }
+  return (
+    <ol className="bc-card p-5">
+      {items.map((it, i) => {
+        const issued = it.action === 'ISSUED'
+        const Icon = issued ? Crosshair : Undo2
+        const a = ACCENTS[issued ? 'red' : 'green']
+        const last = i === items.length - 1
+        return (
+          <li key={it.id} className="relative flex gap-4 pb-5 last:pb-0">
+            {/* connector line down to the next dot */}
+            {!last && <span className="absolute left-[19px] top-10 -bottom-0 w-px bg-slate-700/70" />}
+            <div className={`relative z-10 grid place-items-center h-10 w-10 shrink-0 rounded-full ring-1 ${a.ring}`}>
+              <Icon size={18} className={a.icon} />
+            </div>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <p className="text-sm text-slate-100">
+                <span className="font-medium">{it.guard_name}</span>
+                <span className="text-slate-400">{issued ? ' was issued ' : ' returned '}</span>
+                <span className="font-medium">{it.firearm}</span>
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`text-[11px] font-medium px-1.5 py-0.5 rounded ${issued ? 'bg-red-500/10 text-red-300' : 'bg-green-500/10 text-green-300'}`}>
+                  {issued ? 'Issued' : 'Returned'}
+                </span>
+                <span className="text-xs text-slate-500" title={new Date(it.at).toLocaleString('en-ZA')}>
+                  {timeAgo(it.at)}
+                </span>
+              </div>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}
+
 export default function Dashboard() {
-  const [register, setRegister] = useState([])
-  const [firearms, setFirearms] = useState([])
-  const [guards, setGuards] = useState([])
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      getCurrentRegister(),
-      getFirearms(),
-      getGuards(),
-    ]).then(([regRes, faRes, gRes]) => {
-      setRegister(regRes.data)
-      setFirearms(faRes.data)
-      setGuards(gRes.data)
-    }).finally(() => setLoading(false))
+    getDashboard()
+      .then((res) => setData(res.data))
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
@@ -55,10 +106,8 @@ export default function Dashboard() {
     )
   }
 
-  const issued = register.length
-  const totalFirearms = firearms.length
-  const available = totalFirearms - issued
-  const activeGuards = guards.filter((g) => g.is_active).length
+  const s = data?.stats || {}
+  const activity = data?.recent_activity || []
 
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
@@ -67,19 +116,20 @@ export default function Dashboard() {
         <p className="text-sm text-slate-400 mt-0.5">Overview of your firearms register.</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Firearms Out" value={issued} icon={Crosshair} color="red" />
-        <StatCard label="Available" value={available} icon={CircleCheck} color="green" />
-        <StatCard label="Total Firearms" value={totalFirearms} icon={Archive} color="blue" />
-        <StatCard label="Active Guards" value={activeGuards} icon={Shield} color="amber" />
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <StatCard label="Total Firearms"    value={s.total_firearms}     icon={Archive}       color="blue" />
+        <StatCard label="Currently Issued"  value={s.issued_firearms}    icon={Crosshair}     color="red" />
+        <StatCard label="Available"         value={s.available_firearms} icon={CircleCheck}   color="green" />
+        <StatCard label="Active Guards"     value={s.active_guards}      icon={Shield}        color="amber" />
+        <StatCard label="Permits Generated" value={s.total_permits}      icon={FileText}      color="purple" />
+        <StatCard label="Permits Today"     value={s.permits_today}      icon={CalendarClock} color="amber" />
       </div>
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-        <Link
-          to="/issue"
-          className="group bc-card p-5 flex items-center gap-4 hover:border-blue-500/50 hover:bg-[#243044] transition-colors"
-        >
+        <Link to="/issue"
+          className="group bc-card p-5 flex items-center gap-4 hover:border-blue-500/50 hover:bg-[#243044] transition-colors">
           <div className="grid place-items-center h-12 w-12 rounded-xl bg-blue-600 shadow-lg shadow-blue-600/30">
             <Crosshair size={22} className="text-white" />
           </div>
@@ -89,10 +139,8 @@ export default function Dashboard() {
           </div>
           <ArrowRight size={18} className="text-slate-500 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
         </Link>
-        <Link
-          to="/return"
-          className="group bc-card p-5 flex items-center gap-4 hover:border-green-500/50 hover:bg-[#243044] transition-colors"
-        >
+        <Link to="/return"
+          className="group bc-card p-5 flex items-center gap-4 hover:border-green-500/50 hover:bg-[#243044] transition-colors">
           <div className="grid place-items-center h-12 w-12 rounded-xl bg-green-600 shadow-lg shadow-green-600/30">
             <Undo2 size={22} className="text-white" />
           </div>
@@ -104,42 +152,14 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Current register snapshot */}
-      {register.length > 0 ? (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-white">Currently Issued</h3>
-            <Link to="/register" className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
-              View all <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="bc-card divide-y divide-slate-700/60">
-            {register.slice(0, 5).map((entry) => (
-              <div key={entry.id} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <div className="grid place-items-center h-9 w-9 rounded-lg bg-slate-700/50">
-                    <Shield size={16} className="text-slate-300" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-slate-100">
-                      {entry.guard?.first_name} {entry.guard?.last_name}
-                    </p>
-                    <p className="text-xs text-slate-400">{entry.firearm?.make} {entry.firearm?.model} — {entry.firearm?.serial_number}</p>
-                  </div>
-                </div>
-                <span className="text-xs text-slate-500">
-                  {new Date(entry.issued_at).toLocaleDateString('en-ZA')}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="bc-card p-10 text-center">
-          <CircleCheck size={28} className="mx-auto text-slate-600 mb-2" />
-          <p className="text-slate-400 text-sm">No firearms currently issued</p>
-        </div>
-      )}
+      {/* Recent activity */}
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-semibold text-white">Recent Activity</h3>
+        <Link to="/history" className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1">
+          View history <ArrowRight size={14} />
+        </Link>
+      </div>
+      <ActivityTimeline items={activity} />
     </div>
   )
 }
