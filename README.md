@@ -12,7 +12,7 @@ stays on your premises.
 Get the latest Windows installer from the
 **[Releases page](https://github.com/Victor-Moss/Ballisticore/releases/latest)**:
 
-➡️ **[BallistiCore 1.2.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.2.0)**
+➡️ **[BallistiCore 1.3.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0)**
 
 The installer bundles everything (Python, PostgreSQL and the web app). Run it,
 follow the first-time setup wizard, and BallistiCore opens in your browser.
@@ -21,12 +21,16 @@ Admin → Users.
 
 ## Features
 
-### New in 1.2.0
-- **Dashboard** — key stats at a glance: Total Firearms, Firearms Currently
-  Issued, Available Firearms, Active Guards, Total Permits Generated and Permits
-  Issued Today — plus a clean timeline of the last 10 firearm issues and returns.
+### New in 1.3.0
+- **Light / dark theme** — a theme toggle in the top navigation bar, remembering
+  your choice. Dark is the default; the light theme uses clean whites and light
+  greys with dark text, keeping the same steel-blue accent.
 
 ### Also included
+- **Dashboard** *(1.2.0)* — key stats at a glance: Total Firearms, Firearms
+  Currently Issued, Available Firearms, Active Guards, Total Permits Generated
+  and Permits Issued Today — plus a clean timeline of the last 10 firearm issues
+  and returns.
 - **First-Time Setup wizard** *(1.1.0)* — a 5-step guided first run: Company
   Details (with a Cash-in-Transit toggle), Firearms, Guards, Admin Users, and a
   completion screen. It also shows how other PCs on your network can reach the
@@ -90,6 +94,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
+| [1.3.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0) | Light / dark theme toggle |
 | [1.2.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.2.0) | Dashboard — key stats + recent-activity timeline |
 | [1.1.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.1.0) | First-Time Setup wizard, Excel bulk import |
 | [1.0.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.0.0) | Self-hosted Windows installer |
