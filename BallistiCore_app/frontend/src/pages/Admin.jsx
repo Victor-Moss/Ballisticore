@@ -4,6 +4,7 @@ import { getBrandingFull, updateBranding } from '../api/branding'
 import {
   getAmmunitionTypes, createAmmunitionType, updateAmmunitionType, deleteAmmunitionType,
 } from '../api/ammunitionTypes'
+import { downloadTemplate, uploadImport } from '../api/imports'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
 
@@ -633,6 +634,124 @@ function AmmunitionTypesTab() {
   )
 }
 
+// ── Import Data tab ───────────────────────────────────────────────────────────
+function ImportDataTab() {
+  const [file, setFile]       = useState(null)
+  const [downloading, setDl]  = useState(false)
+  const [importing, setImp]   = useState(false)
+  const [report, setReport]   = useState(null)
+  const [error, setError]     = useState('')
+
+  const handleDownload = async () => {
+    setDl(true); setError('')
+    try { await downloadTemplate() }
+    catch { setError('Could not download the template.') }
+    finally { setDl(false) }
+  }
+
+  const handleImport = async () => {
+    if (!file) return
+    setImp(true); setError(''); setReport(null)
+    try {
+      const res = await uploadImport(file)
+      setReport(res.data)
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Import failed.')
+    } finally {
+      setImp(false)
+    }
+  }
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      {/* Step 1 — download */}
+      <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5">
+        <p className="text-sm font-semibold text-slate-100 mb-1">1. Download the template</p>
+        <p className="text-xs text-slate-400 mb-3">
+          An Excel workbook with three sheets — <span className="text-slate-200">Guards</span>,{' '}
+          <span className="text-slate-200">Firearms</span> and <span className="text-slate-200">Users</span> —
+          with labelled columns and an example row in each. Required columns are marked with <span className="font-mono">*</span>.
+          The grey <span className="font-mono">e.g.…</span> example rows are ignored on import — replace or delete them.
+        </p>
+        <button onClick={handleDownload} disabled={downloading}
+          className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50 transition-colors">
+          {downloading ? 'Preparing…' : '⬇ Download blank template'}
+        </button>
+      </div>
+
+      {/* Step 2 — upload */}
+      <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5">
+        <p className="text-sm font-semibold text-slate-100 mb-1">2. Upload the populated template</p>
+        <p className="text-xs text-slate-400 mb-3">
+          Fill in your rows and upload the file here. Valid rows are imported in bulk; any rows with problems
+          are listed below with the reason — they don't stop the good rows from importing.
+        </p>
+        <div className="flex items-center gap-3">
+          <input type="file" accept=".xlsx,.xlsm" onChange={(e) => { setFile(e.target.files[0] || null); setReport(null) }}
+            className="text-sm text-slate-300 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:bg-slate-700 file:text-white hover:file:bg-slate-600" />
+          <button onClick={handleImport} disabled={!file || importing}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50 transition-colors">
+            {importing ? 'Importing…' : 'Import'}
+          </button>
+        </div>
+        {error && <p className="mt-3 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
+      </div>
+
+      {/* Results */}
+      {report && (
+        <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5 space-y-4">
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-slate-100 font-semibold">Import complete</p>
+            <span className="text-xs text-green-400">{report.imported} imported</span>
+            {report.failed > 0 && <span className="text-xs text-red-400">{report.failed} failed</span>}
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {report.sheets.map((s) => (
+              <div key={s.sheet} className="bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
+                <p className="text-sm font-medium text-slate-100">{s.sheet}</p>
+                <p className="text-xs text-green-400">{s.imported} imported</p>
+                {s.failed > 0 && <p className="text-xs text-red-400">{s.failed} failed</p>}
+                {s.skipped > 0 && <p className="text-xs text-slate-500">{s.skipped} example{s.skipped !== 1 ? 's' : ''} skipped</p>}
+                {s.note && <p className="text-xs text-amber-400">{s.note}</p>}
+              </div>
+            ))}
+          </div>
+
+          {report.failed > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Rows that failed</p>
+              <div className="border border-slate-700 rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-800/40 border-b border-slate-700">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase">Sheet</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase">Row</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-slate-400 uppercase">Reason</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-700/60">
+                    {report.sheets.flatMap((s) => s.errors.map((e) => (
+                      <tr key={`${s.sheet}-${e.row}`} className="hover:bg-slate-800/50">
+                        <td className="px-3 py-2 text-slate-300">{s.sheet}</td>
+                        <td className="px-3 py-2 font-mono text-slate-400">{e.row}</td>
+                        <td className="px-3 py-2 text-red-300">{e.message}</td>
+                      </tr>
+                    )))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs text-slate-500">
+                Fix these rows in your file and upload again — already-imported rows will be reported as duplicates and skipped.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user: currentUser } = useAuth()
@@ -654,11 +773,13 @@ export default function Admin() {
       <div className="flex border-b border-slate-700 mb-6">
         <Tab label="Users"            active={tab === 'users'}   onClick={() => setTab('users')} />
         <Tab label="Ammunition Types" active={tab === 'ammo'}    onClick={() => setTab('ammo')} />
+        <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />
         <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />
       </div>
 
       {tab === 'users'   && <UsersTab currentUser={currentUser} />}
       {tab === 'ammo'    && <AmmunitionTypesTab />}
+      {tab === 'import'  && <ImportDataTab />}
       {tab === 'company' && <CompanyTab />}
     </div>
   )
