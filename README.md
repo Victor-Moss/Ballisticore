@@ -7,8 +7,6 @@ stays on your premises.
 
 [![Latest release](https://img.shields.io/github/v/release/Victor-Moss/Ballisticore?sort=semver)](https://github.com/Victor-Moss/Ballisticore/releases/latest)
 
-![BallistiCore dashboard — key stats and recent activity](docs/dashboard.png)
-
 ## Download
 
 Get the latest Windows installer from the
@@ -47,13 +45,24 @@ Admin → Users.
 
 ## Screenshots
 
-**First-Time Setup wizard** — a guided 5-step first run with a progress indicator.
+<table>
+  <tr>
+    <td width="33%" valign="top" align="center">
+      <a href="docs/dashboard.png"><img src="docs/dashboard.png" alt="Dashboard" width="100%"></a>
+      <br><sub><b>Dashboard</b> — key stats &amp; recent activity</sub>
+    </td>
+    <td width="33%" valign="top" align="center">
+      <a href="docs/wizard.png"><img src="docs/wizard.png" alt="First-Time Setup wizard" width="100%"></a>
+      <br><sub><b>First-Time Setup wizard</b> — guided 5-step first run</sub>
+    </td>
+    <td width="33%" valign="top" align="center">
+      <a href="docs/import.png"><img src="docs/import.png" alt="Excel bulk import" width="100%"></a>
+      <br><sub><b>Excel bulk import</b> — template + per-row validation</sub>
+    </td>
+  </tr>
+</table>
 
-![First-Time Setup wizard](docs/wizard.png)
-
-**Excel bulk import** (Admin → Import Data) — download the template, import in bulk, and see exactly which rows failed and why.
-
-![Excel bulk import](docs/import.png)
+_Click any screenshot to view it full size._
 
 ## How it runs
 
