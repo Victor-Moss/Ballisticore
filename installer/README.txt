@@ -13,7 +13,7 @@ data stays on this machine.
 
 INSTALLING
 ----------
-1. Double-click  BallistiCore-Setup-1.0.0.exe
+1. Double-click  BallistiCore-Setup-1.1.0.exe
 2. Choose where to install it (the default is fine).
 3. Enter your company name and permit prefix when asked.
 4. Click Install and wait for it to finish (the first-time database
