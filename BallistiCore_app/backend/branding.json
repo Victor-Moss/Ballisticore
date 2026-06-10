@@ -6,5 +6,7 @@
   "company_address": "",
   "permit_prefix": "BC",
   "support_email": "",
-  "primary_color": "#1d4ed8"
+  "primary_color": "#1d4ed8",
+  "cit_enabled": false,
+  "setup_completed": false
 }

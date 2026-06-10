@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { BrandingProvider } from './context/BrandingContext'
+import { BrandingProvider, useBranding } from './context/BrandingContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
+import SetupWizard from './pages/SetupWizard'
 import Dashboard from './pages/Dashboard'
 import Guards from './pages/Guards'
 import GuardDetail from './pages/GuardDetail'
@@ -15,10 +16,32 @@ import History from './pages/History'
 import Permits from './pages/Permits'
 import Admin from './pages/Admin'
 
+function FullScreenLoader() {
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <p className="text-sm text-slate-500">Loading…</p>
+    </div>
+  )
+}
+
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
+  const { setup_completed, loaded } = useBranding()
   if (!user) return <Navigate to="/login" replace />
+  if (!loaded) return <FullScreenLoader />
+  // First run after install: send admins through the setup wizard.
+  if (!setup_completed && user.is_admin) return <Navigate to="/setup" replace />
   return <Layout>{children}</Layout>
+}
+
+// Full-screen setup wizard — rendered without the app Layout/sidebar.
+function SetupRoute({ children }) {
+  const { user } = useAuth()
+  const { setup_completed, loaded } = useBranding()
+  if (!user) return <Navigate to="/login" replace />
+  if (!loaded) return <FullScreenLoader />
+  if (setup_completed) return <Navigate to="/" replace />
+  return children
 }
 
 function PublicRoute({ children }) {
@@ -31,6 +54,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+      <Route path="/setup" element={<SetupRoute><SetupWizard /></SetupRoute>} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/register" element={<ProtectedRoute><Register /></ProtectedRoute>} />
       <Route path="/issue" element={<ProtectedRoute><IssueFirearm /></ProtectedRoute>} />

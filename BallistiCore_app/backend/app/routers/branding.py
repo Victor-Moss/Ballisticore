@@ -17,16 +17,24 @@ class BrandingUpdate(BaseModel):
     permit_prefix: Optional[str] = None
     support_email: Optional[str] = None
     primary_color: Optional[str] = None
+    cit_enabled: Optional[bool] = None
+    setup_completed: Optional[bool] = None
 
 
 @router.get("/")
 def get_branding():
-    """Public — returns safe display fields only (no auth required)."""
+    """Public — returns safe display fields only (no auth required).
+
+    Includes the first-time-setup and CIT flags so the frontend can decide
+    whether to launch the setup wizard before an admin session is established.
+    """
     return {
         "app_name": branding["app_name"],
         "company_name": branding["company_name"],
         "permit_prefix": branding["permit_prefix"],
         "primary_color": branding["primary_color"],
+        "cit_enabled": branding.get("cit_enabled", False),
+        "setup_completed": branding.get("setup_completed", False),
     }
 
 

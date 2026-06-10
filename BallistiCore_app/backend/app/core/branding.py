@@ -21,6 +21,11 @@ _DEFAULTS = {
     "permit_prefix": "BC",
     "support_email": "",
     "primary_color": "#1d4ed8",
+    # Whether Cash-in-Transit features are enabled (chosen in first-time setup).
+    "cit_enabled": False,
+    # Flips to True when the first-time setup wizard is completed; once True the
+    # wizard never shows again.
+    "setup_completed": False,
 }
 
 

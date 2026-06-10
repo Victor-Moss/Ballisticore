@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from app.core.config import settings
 from app.core.branding import branding
 from app.core.database import SessionLocal
-from app.routers import auth, locations, ammunition_types, guards, firearms, permissions, register, permits, reports, guard_self, branding as branding_router
+from app.routers import auth, locations, ammunition_types, guards, firearms, permissions, register, permits, reports, guard_self, network, branding as branding_router
 from app.services.users import seed_admin
 
 
@@ -49,6 +49,7 @@ app.include_router(register.router)
 app.include_router(permits.router)
 app.include_router(permits.public_router)
 app.include_router(reports.router)
+app.include_router(network.router)
 
 
 @app.get("/health")

@@ -4,9 +4,11 @@ import { getGuards, guardRequestReset, guardResetPassword } from '../api/guards'
 import { getFirearms } from '../api/firearms'
 import { issueFirearm } from '../api/register'
 import { useAuth } from '../context/AuthContext'
+import { useBranding } from '../context/BrandingContext'
 
 export default function IssueFirearm() {
   const { user } = useAuth()
+  const { cit_enabled } = useBranding()
   const navigate = useNavigate()
   const [guards, setGuards] = useState([])
   const [firearms, setFirearms] = useState([])
@@ -202,16 +204,20 @@ export default function IssueFirearm() {
                 <option value="false">No</option>
               </select>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">CIT Route</label>
-              <input type="text" name="cit_cell_route" value={form.cit_cell_route} onChange={handleChange}
-                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">CIT ID</label>
-              <input type="text" name="cit_id" value={form.cit_id} onChange={handleChange}
-                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
+            {cit_enabled && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">CIT Route</label>
+                  <input type="text" name="cit_cell_route" value={form.cit_cell_route} onChange={handleChange}
+                    className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1">CIT ID</label>
+                  <input type="text" name="cit_id" value={form.cit_id} onChange={handleChange}
+                    className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Responsible Person</label>
               <input type="text" name="responsible_person_name" value={form.responsible_person_name} onChange={handleChange}
