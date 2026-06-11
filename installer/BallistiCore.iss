@@ -15,7 +15,7 @@
 ; ============================================================================
 
 #define AppName        "BallistiCore"
-#define AppVersion     "1.3.0"
+#define AppVersion     "1.4.0"
 #define AppPublisher   "BallistiCore"
 #define AppURL         "https://ballisticore.co.za"
 

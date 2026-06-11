@@ -12,7 +12,7 @@ stays on your premises.
 Get the latest Windows installer from the
 **[Releases page](https://github.com/Victor-Moss/Ballisticore/releases/latest)**:
 
-➡️ **[BallistiCore 1.3.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0)**
+➡️ **[BallistiCore 1.4.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0)**
 
 The installer bundles everything (Python, PostgreSQL and the web app). Run it,
 follow the first-time setup wizard, and BallistiCore opens in your browser.
@@ -21,12 +21,18 @@ Admin → Users.
 
 ## Features
 
-### New in 1.3.0
-- **Light / dark theme** — a theme toggle in the top navigation bar, remembering
-  your choice. Dark is the default; the light theme uses clean whites and light
-  greys with dark text, keeping the same steel-blue accent.
+### New in 1.4.0
+- **Granular permissions** — all 12 user permissions are now enforced. Each
+  operator sees only the menu items their permissions grant; navigating directly
+  to a blocked page shows an Access Denied screen. The same rules are enforced on
+  the server, not just hidden in the UI, so they can't be bypassed. As a safeguard,
+  only a System Admin can create or grant another System Admin — operators with
+  "Add Users" are limited to standard operator-level accounts.
 
 ### Also included
+- **Light / dark theme** *(1.3.0)* — a theme toggle in the top navigation bar,
+  remembering your choice. Dark is the default; the light theme uses clean whites
+  and light greys with dark text, keeping the same steel-blue accent.
 - **Dashboard** *(1.2.0)* — key stats at a glance: Total Firearms, Firearms
   Currently Issued, Available Firearms, Active Guards, Total Permits Generated
   and Permits Issued Today — plus a clean timeline of the last 10 firearm issues
@@ -94,6 +100,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
+| [1.4.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0) | Granular permission enforcement + System Admin escalation guard · installer smoke-tested ✅ |
 | [1.3.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0) | Light / dark theme toggle · installer smoke-tested ✅ |
 | [1.2.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.2.0) | Dashboard — key stats + recent-activity timeline |
 | [1.1.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.1.0) | First-Time Setup wizard, Excel bulk import |
