@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import create_access_token, get_current_user, require_admin
@@ -39,8 +40,14 @@ def create_user(
 ):
     if user_svc.get_by_username(db, data.username):
         raise HTTPException(status_code=409, detail="Username already exists")
+    if data.email and user_svc.get_by_email(db, data.email):
+        raise HTTPException(status_code=409, detail="A user with that email already exists")
     extra = data.model_dump(exclude={"username", "password", "email", "is_admin"})
-    return user_svc.create(db, data.username, data.email, data.password, data.is_admin, **extra)
+    try:
+        return user_svc.create(db, data.username, data.email, data.password, data.is_admin, **extra)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A user with that username or email already exists")
 
 
 @router.get("/users", response_model=list[UserOut])
@@ -58,7 +65,15 @@ def update_user(
     user = user_svc.get_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user_svc.update(db, user, data.model_dump(exclude_none=True))
+    if data.email:
+        existing = user_svc.get_by_email(db, data.email)
+        if existing and existing.id != user_id:
+            raise HTTPException(status_code=409, detail="A user with that email already exists")
+    try:
+        return user_svc.update(db, user, data.model_dump(exclude_none=True))
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A user with that email already exists")
 
 
 @router.put("/users/{user_id}/deactivate", response_model=UserOut)

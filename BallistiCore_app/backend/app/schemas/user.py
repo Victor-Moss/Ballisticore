@@ -1,6 +1,23 @@
 from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+
+def _empty_to_none(v):
+    """Treat blank/whitespace strings as not-provided (None).
+
+    Important for `email`, which is UNIQUE in the DB: storing '' for several
+    users without an email would collide on the unique index, whereas multiple
+    NULLs are allowed.
+    """
+    if isinstance(v, str) and v.strip() == "":
+        return None
+    return v
+
+
+_OPTIONAL_STR_FIELDS = (
+    "email", "personnel_number", "psira_number", "competency", "phone_number", "id_number",
+)
 
 
 class UserCreate(BaseModel):
@@ -30,6 +47,11 @@ class UserCreate(BaseModel):
     perm_rifle: bool = False
     perm_shotgun: bool = False
 
+    @field_validator(*_OPTIONAL_STR_FIELDS, mode="before")
+    @classmethod
+    def _blank_to_none(cls, v):
+        return _empty_to_none(v)
+
 
 class UserUpdate(BaseModel):
     email: Optional[str] = None
@@ -57,6 +79,11 @@ class UserUpdate(BaseModel):
     perm_handgun: Optional[bool] = None
     perm_rifle: Optional[bool] = None
     perm_shotgun: Optional[bool] = None
+
+    @field_validator(*_OPTIONAL_STR_FIELDS, mode="before")
+    @classmethod
+    def _blank_to_none(cls, v):
+        return _empty_to_none(v)
 
 
 class UserOut(BaseModel):
