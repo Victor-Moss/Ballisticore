@@ -107,6 +107,10 @@ file to the client; see `README.txt` for their setup steps.
   `launcher\scripts\_env.bat` before building if they still clash on the target.
 - This supersedes the older nginx + NSSM-services approach in
   `deploy\installer\ArmsRegister.iss`, which is kept only for reference.
+- **Shell tip:** run the `ISCC` compile (and `git push`) from a plain Windows
+  `cmd`/PowerShell shell. Under MSYS/Git Bash, leading-slash flags can get
+  path-mangled (e.g. `/Qp` → a bogus path) — invoke `ISCC.exe BallistiCore.iss`
+  without flags, or use `cmd`.
 
 ## Verification status
 
