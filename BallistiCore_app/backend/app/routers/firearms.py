@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.auth import require_active_user, require_admin
+from app.core.auth import require_active_user, require_admin, require_permission
 from app.models.user import User
 from app.schemas.firearm import FirearmCreate, FirearmUpdate, FirearmOut
 from app.services import firearms as svc
@@ -30,14 +30,16 @@ def get_firearm(firearm_id: str, db: Session = Depends(get_db)):
     return out
 
 
-@router.post("/", response_model=FirearmOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=FirearmOut, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_permission("perm_manage_weapons"))])
 def create_firearm(data: FirearmCreate, db: Session = Depends(get_db)):
     if svc.get_by_serial(db, data.serial_number):
         raise HTTPException(status_code=409, detail="A firearm with this serial number already exists")
     return svc.create(db, data)
 
 
-@router.put("/{firearm_id}", response_model=FirearmOut)
+@router.put("/{firearm_id}", response_model=FirearmOut,
+            dependencies=[Depends(require_permission("perm_manage_weapons"))])
 def update_firearm(firearm_id: str, data: FirearmUpdate, db: Session = Depends(get_db)):
     firearm = svc.get_by_id(db, firearm_id)
     if not firearm:
@@ -49,7 +51,7 @@ def update_firearm(firearm_id: str, data: FirearmUpdate, db: Session = Depends(g
 def delete_firearm(
     firearm_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_permission("perm_manage_weapons")),
 ):
     firearm = svc.get_by_id(db, firearm_id)
     if not firearm:

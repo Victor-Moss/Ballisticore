@@ -7,6 +7,8 @@ import {
 import { downloadTemplate, uploadImport } from '../api/imports'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
+import { hasPerm, isSuperAdmin, canAccessAdmin } from '../utils/permissions'
+import AccessDenied from '../components/AccessDenied'
 
 // ── User form defaults ────────────────────────────────────────────────────────
 const BLANK_USER = {
@@ -74,6 +76,14 @@ function UsersTab({ currentUser }) {
   const [error, setError]         = useState('')
   const [success, setSuccess]     = useState('')
 
+  // Granular capabilities for this operator (super admins get all three).
+  const canAdd       = hasPerm(currentUser, 'perm_add_user')
+  const canModify    = hasPerm(currentUser, 'perm_modify_user')
+  const canChangePw  = hasPerm(currentUser, 'perm_change_passwords')
+  // Only a super admin may grant System Admin to another account. Mirrors the
+  // backend clamp in routers/auth.py — kept in sync for UX, enforced there.
+  const superAdmin   = isSuperAdmin(currentUser)
+
   const load = () => {
     setLoading(true)
     getUsers().then((res) => setUsers(res.data)).finally(() => setLoading(false))
@@ -121,6 +131,12 @@ function UsersTab({ currentUser }) {
 
   const close = () => { setEditing(null); setError(''); setSuccess('') }
 
+  // When editing an existing user, an operator who only holds Change Passwords
+  // (not Modify Users) may change the password but not other fields.
+  const isNew = !editingUser?.id
+  const fieldsLocked = !isNew && !canModify
+  const showPasswordField = isNew ? canAdd : canChangePw
+
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
     setForm((f) => ({ ...f, [e.target.name]: val }))
@@ -162,10 +178,12 @@ function UsersTab({ currentUser }) {
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-slate-400">{users.length} user{users.length !== 1 ? 's' : ''}</p>
-        <button onClick={openNew}
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-          + Add User
-        </button>
+        {canAdd && (
+          <button onClick={openNew}
+            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            + Add User
+          </button>
+        )}
       </div>
 
       {success && !editingUser && (
@@ -201,8 +219,10 @@ function UsersTab({ currentUser }) {
                     : <span className="text-xs text-slate-500">Inactive</span>}
                 </td>
                 <td className="px-4 py-3 text-right flex items-center justify-end gap-3">
-                  <button onClick={() => openEdit(u)} className="text-sm text-blue-400 hover:underline">Edit</button>
-                  {u.id !== currentUser?.id && (
+                  {(canModify || canChangePw) && (
+                    <button onClick={() => openEdit(u)} className="text-sm text-blue-400 hover:underline">Edit</button>
+                  )}
+                  {canModify && u.id !== currentUser?.id && (
                     <button onClick={() => handleToggleActive(u)}
                       className={`text-xs px-2 py-1 rounded transition-colors ${
                         u.is_active
@@ -244,22 +264,26 @@ function UsersTab({ currentUser }) {
                         className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     )}
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-1">
-                      Password{editingUser?.id ? ' (leave blank to keep)' : ' *'}
-                    </label>
-                    <input type="password" name="password" value={form.password} onChange={handleChange}
-                      required={!editingUser?.id} minLength={editingUser?.id ? 0 : 6}
-                      className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  </div>
+                  {showPasswordField && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">
+                        Password{editingUser?.id ? ' (leave blank to keep)' : ' *'}
+                      </label>
+                      <input type="password" name="password" value={form.password} onChange={handleChange}
+                        required={!editingUser?.id} minLength={editingUser?.id ? 0 : 6}
+                        className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">Email</label>
-                    <input type="email" name="email" value={form.email} onChange={handleChange}
-                      className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <input type="email" name="email" value={form.email} onChange={handleChange} disabled={fieldsLocked}
+                      className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" />
                   </div>
                   <div className="flex items-center pt-5">
-                    <label className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
-                      <input type="checkbox" name="is_admin" checked={form.is_admin} onChange={handleChange} className="rounded" />
+                    <label className={`flex items-center gap-2 text-sm text-slate-200 ${superAdmin && !fieldsLocked ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+                      title={superAdmin ? '' : 'Only a System Admin can grant System Administrator'}>
+                      <input type="checkbox" name="is_admin" checked={form.is_admin} onChange={handleChange}
+                        disabled={fieldsLocked || !superAdmin} className="rounded" />
                       System Administrator
                     </label>
                   </div>
@@ -279,8 +303,8 @@ function UsersTab({ currentUser }) {
                   ].map((f) => (
                     <div key={f.name}>
                       <label className="block text-xs font-medium text-slate-400 mb-1">{f.label}</label>
-                      <input type="text" name={f.name} value={form[f.name]} onChange={handleChange}
-                        className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      <input type="text" name={f.name} value={form[f.name]} onChange={handleChange} disabled={fieldsLocked}
+                        className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50" />
                     </div>
                   ))}
                 </div>
@@ -290,12 +314,19 @@ function UsersTab({ currentUser }) {
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Permissions</p>
                 <div className="grid grid-cols-2 gap-y-2 gap-x-6">
-                  {PERMISSION_LABELS.map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
-                      <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} className="rounded" />
-                      {label}
-                    </label>
-                  ))}
+                  {PERMISSION_LABELS.map(({ key, label }) => {
+                    // System Admin can only be granted by a super admin.
+                    const lockSysAdmin = key === 'perm_system_admin' && !superAdmin
+                    const disabled = fieldsLocked || lockSysAdmin
+                    return (
+                      <label key={key}
+                        className={`flex items-center gap-2 text-sm text-slate-200 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                        title={lockSysAdmin ? 'Only a System Admin can grant System Admin' : ''}>
+                        <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} disabled={disabled} className="rounded" />
+                        {label}
+                      </label>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -305,7 +336,7 @@ function UsersTab({ currentUser }) {
                 <div className="flex gap-6">
                   {WEAPON_PERMS.map(({ key, label }) => (
                     <label key={key} className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
-                      <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} className="rounded" />
+                      <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} disabled={fieldsLocked} className="rounded" />
                       {label}
                     </label>
                   ))}
@@ -757,13 +788,15 @@ export default function Admin() {
   const { user: currentUser } = useAuth()
   const [tab, setTab] = useState('users')
 
-  if (!currentUser?.is_admin) {
-    return (
-      <div className="p-6">
-        <p className="text-sm text-red-400">Access denied — admin only.</p>
-      </div>
-    )
+  // The route already gates this, but guard again so a stale token / direct
+  // mount still shows a friendly message rather than failing API calls.
+  if (!canAccessAdmin(currentUser)) {
+    return <AccessDenied message="You don't have permission to access the Admin section." />
   }
+
+  // Users tab is available to anyone who can reach Admin. The system-management
+  // tabs (ammunition, import, company branding) are super-admin only.
+  const superAdmin = isSuperAdmin(currentUser)
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -772,15 +805,15 @@ export default function Admin() {
       {/* Tabs */}
       <div className="flex border-b border-slate-700 mb-6">
         <Tab label="Users"            active={tab === 'users'}   onClick={() => setTab('users')} />
-        <Tab label="Ammunition Types" active={tab === 'ammo'}    onClick={() => setTab('ammo')} />
-        <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />
-        <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />
+        {superAdmin && <Tab label="Ammunition Types" active={tab === 'ammo'}    onClick={() => setTab('ammo')} />}
+        {superAdmin && <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />}
+        {superAdmin && <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />}
       </div>
 
-      {tab === 'users'   && <UsersTab currentUser={currentUser} />}
-      {tab === 'ammo'    && <AmmunitionTypesTab />}
-      {tab === 'import'  && <ImportDataTab />}
-      {tab === 'company' && <CompanyTab />}
+      {tab === 'users'             && <UsersTab currentUser={currentUser} />}
+      {tab === 'ammo'    && superAdmin && <AmmunitionTypesTab />}
+      {tab === 'import'  && superAdmin && <ImportDataTab />}
+      {tab === 'company' && superAdmin && <CompanyTab />}
     </div>
   )
 }

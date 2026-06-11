@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.auth import require_active_user, require_admin, require_change_passwords
+from app.core.auth import require_active_user, require_admin, require_change_passwords, require_permission
 from app.models.user import User
 from app.schemas.guard import (
     GuardCreate, GuardUpdate, GuardOut, CITRouteCreate, CITRouteOut,
@@ -36,7 +36,8 @@ def get_guard_permissions(guard_id: str, db: Session = Depends(get_db)):
     return perm_svc.get_for_guard(db, guard_id)
 
 
-@router.post("/", response_model=GuardOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=GuardOut, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_permission("perm_manage_staff"))])
 def create_guard(data: GuardCreate, db: Session = Depends(get_db)):
     if data.id_number and svc.get_by_id_number(db, data.id_number):
         raise HTTPException(status_code=409, detail="A guard with this ID number already exists")
@@ -50,7 +51,8 @@ def create_guard(data: GuardCreate, db: Session = Depends(get_db)):
     return guard
 
 
-@router.put("/{guard_id}", response_model=GuardOut)
+@router.put("/{guard_id}", response_model=GuardOut,
+            dependencies=[Depends(require_permission("perm_manage_staff"))])
 def update_guard(guard_id: str, data: GuardUpdate, db: Session = Depends(get_db)):
     guard = svc.get_by_id(db, guard_id)
     if not guard:
@@ -58,7 +60,8 @@ def update_guard(guard_id: str, data: GuardUpdate, db: Session = Depends(get_db)
     return svc.update(db, guard, data)
 
 
-@router.put("/{guard_id}/deactivate", response_model=GuardOut)
+@router.put("/{guard_id}/deactivate", response_model=GuardOut,
+            dependencies=[Depends(require_permission("perm_manage_staff"))])
 def deactivate_guard(guard_id: str, db: Session = Depends(get_db)):
     guard = svc.get_by_id(db, guard_id)
     if not guard:
@@ -68,7 +71,8 @@ def deactivate_guard(guard_id: str, db: Session = Depends(get_db)):
     return svc.deactivate(db, guard)
 
 
-@router.put("/{guard_id}/reactivate", response_model=GuardOut)
+@router.put("/{guard_id}/reactivate", response_model=GuardOut,
+            dependencies=[Depends(require_permission("perm_manage_staff"))])
 def reactivate_guard(guard_id: str, db: Session = Depends(get_db)):
     guard = svc.get_by_id(db, guard_id)
     if not guard:
@@ -82,7 +86,7 @@ def reactivate_guard(guard_id: str, db: Session = Depends(get_db)):
 def delete_guard(
     guard_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_permission("perm_manage_staff")),
 ):
     guard = svc.get_by_id(db, guard_id)
     if not guard:
@@ -163,7 +167,8 @@ def list_cit_routes(guard_id: str, db: Session = Depends(get_db)):
     return svc.get_cit_routes(db, guard_id)
 
 
-@router.post("/{guard_id}/cit-routes", response_model=CITRouteOut, status_code=status.HTTP_201_CREATED)
+@router.post("/{guard_id}/cit-routes", response_model=CITRouteOut, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_permission("perm_manage_staff"))])
 def add_cit_route(guard_id: str, data: CITRouteCreate, db: Session = Depends(get_db)):
     guard = svc.get_by_id(db, guard_id)
     if not guard:
@@ -171,7 +176,8 @@ def add_cit_route(guard_id: str, data: CITRouteCreate, db: Session = Depends(get
     return svc.add_cit_route(db, guard_id, data)
 
 
-@router.delete("/{guard_id}/cit-routes/{route_id}", status_code=204)
+@router.delete("/{guard_id}/cit-routes/{route_id}", status_code=204,
+               dependencies=[Depends(require_permission("perm_manage_staff"))])
 def delete_cit_route(guard_id: str, route_id: str, db: Session = Depends(get_db)):
     if not svc.delete_cit_route(db, route_id):
         raise HTTPException(status_code=404, detail="CIT route not found")

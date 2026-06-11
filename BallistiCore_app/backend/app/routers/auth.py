@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.auth import create_access_token, get_current_user, require_admin
+from app.core.auth import create_access_token, get_current_user, require_admin, require_permission, is_super_admin
 from app.schemas.user import UserCreate, UserUpdate, UserOut, TokenOut
 from app.services import users as user_svc
 from app.models.user import User
@@ -36,8 +36,14 @@ def get_me(current_user: User = Depends(get_current_user)):
 def create_user(
     data: UserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("perm_add_user")),
 ):
+    # Privilege-escalation guard: only a super admin (is_admin OR System Admin)
+    # may mint another System Admin. A non-super operator with "Add Users" can
+    # only create standard operator-level accounts — clamp the elevated flags.
+    if not is_super_admin(current_user):
+        data.is_admin = False
+        data.perm_system_admin = False
     if user_svc.get_by_username(db, data.username):
         raise HTTPException(status_code=409, detail="Username already exists")
     if data.email and user_svc.get_by_email(db, data.email):
@@ -51,7 +57,10 @@ def create_user(
 
 
 @router.get("/users", response_model=list[UserOut])
-def list_users(db: Session = Depends(get_db), _: User = Depends(require_admin)):
+def list_users(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_permission("perm_add_user", "perm_modify_user", "perm_change_passwords")),
+):
     return user_svc.get_all(db)
 
 
@@ -60,7 +69,7 @@ def update_user(
     user_id: str,
     data: UserUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("perm_modify_user", "perm_change_passwords")),
 ):
     user = user_svc.get_by_id(db, user_id)
     if not user:
@@ -69,8 +78,15 @@ def update_user(
         existing = user_svc.get_by_email(db, data.email)
         if existing and existing.id != user_id:
             raise HTTPException(status_code=409, detail="A user with that email already exists")
+    update_data = data.model_dump(exclude_none=True)
+    # Only a super admin may grant or revoke System Admin. A non-super operator
+    # cannot elevate (or demote) the System Admin flags on any account — drop
+    # them from the update so the existing values are preserved.
+    if not is_super_admin(current_user):
+        update_data.pop("is_admin", None)
+        update_data.pop("perm_system_admin", None)
     try:
-        return user_svc.update(db, user, data.model_dump(exclude_none=True))
+        return user_svc.update(db, user, update_data)
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail="A user with that email already exists")
@@ -80,7 +96,7 @@ def update_user(
 def deactivate_user(
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_admin),
+    current_user: User = Depends(require_permission("perm_modify_user")),
 ):
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
@@ -97,7 +113,7 @@ def deactivate_user(
 def reactivate_user(
     user_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    _: User = Depends(require_permission("perm_modify_user")),
 ):
     user = user_svc.get_by_id(db, user_id)
     if not user:

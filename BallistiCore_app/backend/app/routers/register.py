@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.auth import require_active_user
+from app.core.auth import require_active_user, require_permission
 from app.schemas.register import IssueRequest, ReturnRequest, RegisterEntryOut, HistoryEntryOut
 from app.services import issuance as svc
 from app.services import guards as guard_svc
@@ -23,7 +23,7 @@ def register_for_guard(guard_id: str, db: Session = Depends(get_db)):
     return svc.get_register_for_guard(db, guard_id)
 
 
-@router.post("/issue", response_model=RegisterEntryOut)
+@router.post("/issue", response_model=RegisterEntryOut, dependencies=[Depends(require_permission("perm_new_permits"))])
 def issue_firearm(data: IssueRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     return svc.issue_firearm(
         db, data.guard_id, data.firearm_id, data.issued_by, data.notes, background_tasks,
@@ -41,7 +41,7 @@ def issue_firearm(data: IssueRequest, background_tasks: BackgroundTasks, db: Ses
     )
 
 
-@router.post("/return", response_model=HistoryEntryOut)
+@router.post("/return", response_model=HistoryEntryOut, dependencies=[Depends(require_permission("perm_return_permits"))])
 def return_firearm(data: ReturnRequest, db: Session = Depends(get_db)):
     return svc.return_firearm(
         db, data.firearm_id, data.actioned_by, data.notes,

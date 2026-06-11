@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getPermits, resendWhatsapp, downloadPermit, downloadMiniPermit } from '../api/permits'
+import { useAuth } from '../context/AuthContext'
+import { hasPerm } from '../utils/permissions'
 
 export default function Permits() {
+  const { user } = useAuth()
+  const canSendWhatsapp = hasPerm(user, 'perm_send_whatsapp')
   const [permits, setPermits] = useState([])
   const [loading, setLoading] = useState(true)
   const [resending, setResending] = useState(null)
@@ -114,13 +118,15 @@ export default function Permits() {
                       >
                         {downloading === `${permit.id}-mini` ? '…' : 'Mini'}
                       </button>
-                      <button
-                        onClick={() => handleResend(permit)}
-                        disabled={resending === permit.id}
-                        className="text-xs text-purple-400 hover:underline disabled:opacity-50"
-                      >
-                        {resending === permit.id ? 'Sending…' : 'WhatsApp'}
-                      </button>
+                      {canSendWhatsapp && (
+                        <button
+                          onClick={() => handleResend(permit)}
+                          disabled={resending === permit.id}
+                          className="text-xs text-purple-400 hover:underline disabled:opacity-50"
+                        >
+                          {resending === permit.id ? 'Sending…' : 'WhatsApp'}
+                        </button>
+                      )}
                       {resendMsg[permit.id] && (
                         <span className={`text-xs ${resendMsg[permit.id] === 'Sent!' ? 'text-green-400' : 'text-red-400'}`}>
                           {resendMsg[permit.id]}

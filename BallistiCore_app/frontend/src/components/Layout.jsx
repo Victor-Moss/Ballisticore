@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
 import { useTheme } from '../context/ThemeContext'
+import { hasPerm, canAccessAdmin } from '../utils/permissions'
 import Logo from './Logo'
 import {
   LayoutDashboard, ClipboardList, Crosshair, Undo2, History,
@@ -23,16 +24,18 @@ function ThemeToggle() {
   )
 }
 
+// `perm` mirrors the route guards in App.jsx and the backend permission rules.
+// No `perm` → always visible (Dashboard). `admin: true` → use canAccessAdmin.
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/register', label: 'Register', icon: ClipboardList },
-  { to: '/issue', label: 'Issue Firearm', icon: Crosshair },
-  { to: '/return', label: 'Return Firearm', icon: Undo2 },
-  { to: '/history', label: 'History', icon: History },
-  { to: '/permits', label: 'Permits', icon: FileText },
-  { to: '/guards', label: 'Guards', icon: Shield },
-  { to: '/firearms', label: 'Firearms', icon: Archive },
-  { to: '/admin', label: 'Admin', icon: Settings, adminOnly: true },
+  { to: '/register', label: 'Register', icon: ClipboardList, perm: 'perm_access_database' },
+  { to: '/issue', label: 'Issue Firearm', icon: Crosshair, perm: 'perm_new_permits' },
+  { to: '/return', label: 'Return Firearm', icon: Undo2, perm: 'perm_return_permits' },
+  { to: '/history', label: 'History', icon: History, perm: 'perm_view_register_history' },
+  { to: '/permits', label: 'Permits', icon: FileText, perm: ['perm_new_permits', 'perm_send_whatsapp'] },
+  { to: '/guards', label: 'Guards', icon: Shield, perm: 'perm_manage_staff' },
+  { to: '/firearms', label: 'Firearms', icon: Archive, perm: 'perm_manage_weapons' },
+  { to: '/admin', label: 'Admin', icon: Settings, admin: true },
 ]
 
 export default function Layout({ children }) {
@@ -45,8 +48,8 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-  const visibleItems = navItems.filter(
-    (item) => !item.adminOnly || user?.is_admin
+  const visibleItems = navItems.filter((item) =>
+    item.admin ? canAccessAdmin(user) : hasPerm(user, item.perm)
   )
 
   const initials = (user?.username || '?').slice(0, 2).toUpperCase()

@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.auth import require_active_user
+from app.core.auth import require_active_user, require_permission
 from app.models.permit import Permit
 from app.models.guard import Guard
 from app.models.firearm import Firearm
@@ -110,7 +110,7 @@ class ResendRequest(BaseModel):
     recipient_number: Optional[str] = None  # override; defaults to guard's cell_phone
 
 
-@router.post("/{permit_id}/resend-whatsapp")
+@router.post("/{permit_id}/resend-whatsapp", dependencies=[Depends(require_permission("perm_send_whatsapp"))])
 def resend_whatsapp(
     permit_id: str,
     data: ResendRequest,

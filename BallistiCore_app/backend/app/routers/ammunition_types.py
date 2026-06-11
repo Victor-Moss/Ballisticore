@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.core.auth import require_active_user
+from app.core.auth import require_active_user, require_admin
 from app.schemas.ammunition_type import (
     AmmunitionTypeCreate,
     AmmunitionTypeUpdate,
@@ -29,12 +29,14 @@ def get_ammunition_type(ammunition_type_id: str, db: Session = Depends(get_db)):
     return ammo
 
 
-@router.post("/", response_model=AmmunitionTypeOut, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=AmmunitionTypeOut, status_code=status.HTTP_201_CREATED,
+             dependencies=[Depends(require_admin)])
 def create_ammunition_type(data: AmmunitionTypeCreate, db: Session = Depends(get_db)):
     return svc.create(db, data)
 
 
-@router.put("/{ammunition_type_id}", response_model=AmmunitionTypeOut)
+@router.put("/{ammunition_type_id}", response_model=AmmunitionTypeOut,
+            dependencies=[Depends(require_admin)])
 def update_ammunition_type(ammunition_type_id: str, data: AmmunitionTypeUpdate, db: Session = Depends(get_db)):
     ammo = svc.get_by_id(db, ammunition_type_id)
     if not ammo:
@@ -42,7 +44,8 @@ def update_ammunition_type(ammunition_type_id: str, data: AmmunitionTypeUpdate, 
     return svc.update(db, ammo, data)
 
 
-@router.delete("/{ammunition_type_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{ammunition_type_id}", status_code=status.HTTP_204_NO_CONTENT,
+               dependencies=[Depends(require_admin)])
 def deactivate_ammunition_type(ammunition_type_id: str, db: Session = Depends(get_db)):
     ammo = svc.get_by_id(db, ammunition_type_id)
     if not ammo:

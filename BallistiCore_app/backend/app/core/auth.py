@@ -43,12 +43,41 @@ def require_active_user(current_user: User = Depends(get_current_user)) -> User:
 
 
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    if not current_user.is_admin:
+    if not is_super_admin(current_user):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
         )
     return current_user
+
+
+def is_super_admin(user: User) -> bool:
+    """A super admin bypasses every granular permission check.
+
+    Either the legacy `is_admin` flag or the explicit System Admin permission
+    grants full access."""
+    return bool(user.is_admin or user.perm_system_admin)
+
+
+def require_permission(*perm_keys: str):
+    """Build a dependency that allows the request only if the current user is a
+    super admin OR holds at least one of the named `perm_*` permissions.
+
+    Used to gate mutating endpoints so that a non-admin who has been granted a
+    specific permission can actually perform that action, while everyone else
+    gets a 403. Read endpoints are intentionally left open."""
+
+    def dependency(current_user: User = Depends(get_current_user)) -> User:
+        if is_super_admin(current_user):
+            return current_user
+        if any(getattr(current_user, key, False) for key in perm_keys):
+            return current_user
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You do not have permission to perform this action",
+        )
+
+    return dependency
 
 
 def require_change_passwords(current_user: User = Depends(get_current_user)) -> User:

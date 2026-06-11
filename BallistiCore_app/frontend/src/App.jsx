@@ -16,6 +16,8 @@ import ReturnFirearm from './pages/ReturnFirearm'
 import History from './pages/History'
 import Permits from './pages/Permits'
 import Admin from './pages/Admin'
+import AccessDenied from './components/AccessDenied'
+import { hasPerm, canAccessAdmin } from './utils/permissions'
 
 function FullScreenLoader() {
   return (
@@ -25,14 +27,19 @@ function FullScreenLoader() {
   )
 }
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, perm }) {
   const { user } = useAuth()
   const { setup_completed, loaded } = useBranding()
   if (!user) return <Navigate to="/login" replace />
   if (!loaded) return <FullScreenLoader />
   // First run after install: send admins through the setup wizard.
   if (!setup_completed && user.is_admin) return <Navigate to="/setup" replace />
-  return <Layout>{children}</Layout>
+  // Per-route permission gate. `perm` may be a key, an array of keys, or a
+  // predicate function (user) => boolean. Missing → render Access Denied
+  // inside the normal Layout so the user keeps their navigation.
+  const allowed =
+    !perm || (typeof perm === 'function' ? perm(user) : hasPerm(user, perm))
+  return <Layout>{allowed ? children : <AccessDenied />}</Layout>
 }
 
 // Full-screen setup wizard — rendered without the app Layout/sidebar.
@@ -57,16 +64,16 @@ function AppRoutes() {
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/setup" element={<SetupRoute><SetupWizard /></SetupRoute>} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/register" element={<ProtectedRoute><Register /></ProtectedRoute>} />
-      <Route path="/issue" element={<ProtectedRoute><IssueFirearm /></ProtectedRoute>} />
-      <Route path="/return" element={<ProtectedRoute><ReturnFirearm /></ProtectedRoute>} />
-      <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-      <Route path="/permits" element={<ProtectedRoute><Permits /></ProtectedRoute>} />
-      <Route path="/guards" element={<ProtectedRoute><Guards /></ProtectedRoute>} />
-      <Route path="/guards/:id" element={<ProtectedRoute><GuardDetail /></ProtectedRoute>} />
-      <Route path="/firearms" element={<ProtectedRoute><Firearms /></ProtectedRoute>} />
-      <Route path="/firearms/:id" element={<ProtectedRoute><FirearmDetail /></ProtectedRoute>} />
-      <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+      <Route path="/register" element={<ProtectedRoute perm="perm_access_database"><Register /></ProtectedRoute>} />
+      <Route path="/issue" element={<ProtectedRoute perm="perm_new_permits"><IssueFirearm /></ProtectedRoute>} />
+      <Route path="/return" element={<ProtectedRoute perm="perm_return_permits"><ReturnFirearm /></ProtectedRoute>} />
+      <Route path="/history" element={<ProtectedRoute perm="perm_view_register_history"><History /></ProtectedRoute>} />
+      <Route path="/permits" element={<ProtectedRoute perm={['perm_new_permits', 'perm_send_whatsapp']}><Permits /></ProtectedRoute>} />
+      <Route path="/guards" element={<ProtectedRoute perm="perm_manage_staff"><Guards /></ProtectedRoute>} />
+      <Route path="/guards/:id" element={<ProtectedRoute perm="perm_manage_staff"><GuardDetail /></ProtectedRoute>} />
+      <Route path="/firearms" element={<ProtectedRoute perm="perm_manage_weapons"><Firearms /></ProtectedRoute>} />
+      <Route path="/firearms/:id" element={<ProtectedRoute perm="perm_manage_weapons"><FirearmDetail /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute perm={canAccessAdmin}><Admin /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
