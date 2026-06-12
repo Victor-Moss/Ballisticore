@@ -23,9 +23,13 @@ class Register(Base):
     cit_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     responsible_person_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    # Electronic signature — guard acknowledged receipt with their password
+    # Electronic signatures at issue — the guard acknowledged receipt ("Received
+    # by") and the issuing staff member signed ("Issued by"), each by entering
+    # their own password.
     guard_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     guard_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    issuer_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    issuer_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     guard: Mapped["Guard"] = relationship("Guard", back_populates="register_entries")
     firearm: Mapped["Firearm"] = relationship("Firearm", back_populates="register_entry")

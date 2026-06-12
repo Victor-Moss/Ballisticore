@@ -166,5 +166,13 @@ class GuardSummary(BaseModel):
     id_number: Optional[str] = None
     psira_number: Optional[str] = None
     is_active: bool
+    # Sign-in account presence — lets the Return form know whether this guard
+    # must e-sign (enter their password) to hand the firearm back.
+    username: Optional[str] = None
+
+    @computed_field
+    @property
+    def has_account(self) -> bool:
+        return bool(self.username)
 
     model_config = {"from_attributes": True}

@@ -18,6 +18,7 @@ export default function IssueFirearm() {
     cit_cell_route: '', witness: '', saps_competency_number: '',
     ammunition_issued: '', firearm_inspected_correct: '',
     cit_id: '', responsible_person_name: '', guard_password: '',
+    issuer_password: '',
   })
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -112,6 +113,7 @@ export default function IssueFirearm() {
         cit_id: form.cit_id || null,
         responsible_person_name: form.responsible_person_name || null,
         guard_password: form.guard_password || null,
+        issuer_password: form.issuer_password || null,
       })
       navigate('/register')
     } catch (err) {
@@ -312,6 +314,24 @@ export default function IssueFirearm() {
           </div>
         )}
 
+        {/* Issuing staff signature — the logged-in operator signs by re-entering
+            their own account password. Always required. */}
+        <div>
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Your Signature (Issuer)</p>
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-3">
+            <p className="text-xs text-blue-300">
+              You (<span className="font-semibold">{user.username}</span>) must sign to issue this firearm. Enter your account password.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Your password</label>
+              <input type="password" name="issuer_password" value={form.issuer_password} onChange={handleChange}
+                autoComplete="off"
+                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter your password to sign" />
+            </div>
+          </div>
+        </div>
+
         {/* Notes */}
         <div>
           <label className="block text-xs font-medium text-slate-400 mb-1">Notes (optional)</label>
@@ -321,9 +341,9 @@ export default function IssueFirearm() {
 
         <div className="flex gap-3 pt-1">
           <button type="submit"
-            disabled={submitting || (selectedGuard?.has_account && !form.guard_password)}
+            disabled={submitting || (selectedGuard?.has_account && !form.guard_password) || !form.issuer_password}
             className="bg-blue-600 text-white text-sm px-6 py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-            {submitting ? 'Issuing…' : selectedGuard?.has_account ? 'Sign & Issue Firearm' : 'Issue Firearm'}
+            {submitting ? 'Issuing…' : 'Sign & Issue Firearm'}
           </button>
           <button type="button" onClick={() => navigate('/register')} className="text-sm text-slate-400 hover:text-slate-100">
             Cancel

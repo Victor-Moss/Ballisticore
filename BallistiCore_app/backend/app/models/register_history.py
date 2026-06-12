@@ -32,9 +32,14 @@ class RegisterHistory(Base):
     authorising_officer_signature: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     audit_signature: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
-    # Electronic signature — guard authenticated at the time of this action
+    # Electronic signatures captured at the time of this action. Both parties
+    # sign by entering their own password.
+    #   ISSUED  — guard_signed = receiving guard, issuer_signed = issuing staff
+    #   RETURNED — guard_signed = returning guard, issuer_signed = receiving staff
     guard_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     guard_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    issuer_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    issuer_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     # CIT / responsible person
     cit_id: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)

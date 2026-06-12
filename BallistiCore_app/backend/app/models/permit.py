@@ -36,11 +36,27 @@ class Permit(Base):
     posted: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     remarks: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
-    # Electronic signature — guard authenticated with their password at issue
+    # Electronic signature — guard authenticated with their password at issue.
+    # This is the "Received by" signature on the permit (guard receiving the firearm).
     guard_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     guard_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     guard_signature_method: Mapped[Optional[str]] = mapped_column(String(30), nullable=True)
 
+    # Issuing staff member's electronic signature at issue — the "Issued by"
+    # signature. The operator re-enters their account password to sign.
+    issuer_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    issuer_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    # Return signatures, captured when the firearm is handed back.
+    #   return_guard_*    — the guard returning the firearm ("Returned by")
+    #   return_received_* — the staff member receiving the return ("Received by")
+    return_guard_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    return_guard_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    return_received_by: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id"), nullable=True)
+    return_received_signed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    return_received_signed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
     guard: Mapped["Guard"] = relationship("Guard", back_populates="permits")
     firearm: Mapped["Firearm"] = relationship("Firearm", back_populates="permits")
     issued_by_user: Mapped["User"] = relationship("User", foreign_keys=[issued_by])
+    return_received_by_user: Mapped[Optional["User"]] = relationship("User", foreign_keys=[return_received_by])

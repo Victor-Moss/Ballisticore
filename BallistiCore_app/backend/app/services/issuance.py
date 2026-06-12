@@ -27,6 +27,7 @@ from app.services import permissions as perm_svc
 from app.services import permit_generator as pdf_gen
 from app.services import whatsapp as wa
 from app.services import guard_auth
+from app.services.users import verify_password
 from app.core.branding import branding
 
 
@@ -55,6 +56,8 @@ def issue_firearm(
     cit_id: str | None = None,
     responsible_person_name: str | None = None,
     guard_password: str | None = None,
+    current_user=None,
+    issuer_password: str | None = None,
 ) -> Register:
     # 1. Guard check
     guard = guard_svc.get_by_id(db, guard_id)
@@ -115,6 +118,26 @@ def issue_firearm(
         signed_at = datetime.utcnow()
         guard.last_signin_at = signed_at
 
+    # 4c. Issuing staff member's electronic signature. The operator re-enters
+    # their own account password to sign for the issue ("Issued by"). This is
+    # always required — both parties must sign before the issue is recorded.
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The issuing staff member could not be identified.",
+        )
+    if not issuer_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must sign for this issue — enter your account password.",
+        )
+    if not verify_password(issuer_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Signature failed — your account password is incorrect.",
+        )
+    issuer_signed_at = datetime.utcnow()
+
     # 5. Create permit record
     # Snapshot the firearm's linked ammunition type name at issue time. Stored as
     # text on each record so the permit stays accurate if the type is later renamed.
@@ -136,6 +159,8 @@ def issue_firearm(
         guard_signed=signed_at is not None,
         guard_signed_at=signed_at,
         guard_signature_method="electronic_password" if signed_at else None,
+        issuer_signed=True,
+        issuer_signed_at=issuer_signed_at,
     )
     db.add(permit)
     db.flush()  # get permit.id before committing
@@ -154,6 +179,8 @@ def issue_firearm(
         responsible_person_name=responsible_person_name,
         guard_signed=signed_at is not None,
         guard_signed_at=signed_at,
+        issuer_signed=True,
+        issuer_signed_at=issuer_signed_at,
     )
     db.add(entry)
 
@@ -172,6 +199,8 @@ def issue_firearm(
         responsible_person_name=responsible_person_name,
         guard_signed=signed_at is not None,
         guard_signed_at=signed_at,
+        issuer_signed=True,
+        issuer_signed_at=issuer_signed_at,
     )
     db.add(history)
     db.commit()
@@ -217,6 +246,9 @@ def return_firearm(
     remarks: str | None = None,
     ammunition_returned: int | None = None,
     permit_returned: bool | None = None,
+    current_user=None,
+    staff_password: str | None = None,
+    guard_password: str | None = None,
 ) -> RegisterHistory:
     # 1. Find current register entry
     entry = db.query(Register).filter(Register.firearm_id == firearm_id).first()
@@ -230,7 +262,48 @@ def return_firearm(
 
     guard_id = entry.guard_id
 
-    # 2. Update the permit with return inspection data
+    # 1b. Electronic signatures — both the returning guard and the receiving
+    # staff member must sign before the return is recorded. Verify both up front
+    # so nothing is mutated if either signature is missing or wrong.
+    guard = guard_svc.get_by_id(db, guard_id)
+
+    # Returning guard ("Returned by"). Required when the guard has a sign-in
+    # account; a guard without one returns unsigned (mirrors the issue flow).
+    return_guard_signed_at = None
+    if guard and guard_auth.has_account(guard):
+        if not guard_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{guard.first_name} {guard.last_name} must sign to return this firearm. Enter their password.",
+            )
+        if not guard_auth.verify_guard_password(guard, guard_password):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Signature failed — the password entered for {guard.first_name} {guard.last_name} is incorrect.",
+            )
+        return_guard_signed_at = datetime.utcnow()
+        guard.last_signin_at = return_guard_signed_at
+
+    # Receiving staff member ("Received by"). Always required.
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The staff member receiving the return could not be identified.",
+        )
+    if not staff_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You must sign to receive this return — enter your account password.",
+        )
+    if not verify_password(staff_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Signature failed — your account password is incorrect.",
+        )
+    staff_signed_at = datetime.utcnow()
+
+    # 2. Update the permit with return inspection data + return signatures
+    permit = None
     if entry.permit_id:
         permit = db.query(Permit).filter(Permit.id == entry.permit_id).first()
         if permit:
@@ -242,11 +315,18 @@ def return_firearm(
                 permit.in_order = in_order
             if remarks:
                 permit.remarks = remarks
+            permit.return_guard_signed = return_guard_signed_at is not None
+            permit.return_guard_signed_at = return_guard_signed_at
+            permit.return_received_by = current_user.id
+            permit.return_received_signed = True
+            permit.return_received_signed_at = staff_signed_at
 
     # 3. Remove from register
     db.delete(entry)
 
-    # 5. Append to history (carry forward issue-time fields from register entry)
+    # 5. Append to history (carry forward issue-time fields from register entry).
+    # For a RETURNED action: guard_signed = the returning guard, issuer_signed =
+    # the receiving staff member.
     history = RegisterHistory(
         guard_id=guard_id,
         firearm_id=firearm_id,
@@ -262,10 +342,24 @@ def return_firearm(
         permit_returned=permit_returned,
         cit_id=entry.cit_id,
         responsible_person_name=entry.responsible_person_name,
+        guard_signed=return_guard_signed_at is not None,
+        guard_signed_at=return_guard_signed_at,
+        issuer_signed=True,
+        issuer_signed_at=staff_signed_at,
     )
     db.add(history)
     db.commit()
     db.refresh(history)
+
+    # Regenerate the permit PDFs so the return signatures appear on them.
+    if permit is not None:
+        try:
+            firearm = firearm_svc.get_by_id(db, firearm_id)
+            if guard and firearm:
+                pdf_gen.generate_both(db, permit, guard, firearm)
+        except Exception as e:
+            print(f"PDF regeneration warning: {e}")
+
     return history
 
 

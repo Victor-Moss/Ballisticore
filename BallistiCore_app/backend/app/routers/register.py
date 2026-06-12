@@ -4,6 +4,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.auth import require_active_user, require_permission
+from app.models.user import User
 from app.schemas.register import IssueRequest, ReturnRequest, RegisterEntryOut, HistoryEntryOut
 from app.services import issuance as svc
 from app.services import guards as guard_svc
@@ -23,8 +24,13 @@ def register_for_guard(guard_id: str, db: Session = Depends(get_db)):
     return svc.get_register_for_guard(db, guard_id)
 
 
-@router.post("/issue", response_model=RegisterEntryOut, dependencies=[Depends(require_permission("perm_new_permits"))])
-def issue_firearm(data: IssueRequest, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+@router.post("/issue", response_model=RegisterEntryOut)
+def issue_firearm(
+    data: IssueRequest,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("perm_new_permits")),
+):
     return svc.issue_firearm(
         db, data.guard_id, data.firearm_id, data.issued_by, data.notes, background_tasks,
         rounds_issued=data.rounds_issued,
@@ -38,11 +44,17 @@ def issue_firearm(data: IssueRequest, background_tasks: BackgroundTasks, db: Ses
         cit_id=data.cit_id,
         responsible_person_name=data.responsible_person_name,
         guard_password=data.guard_password,
+        current_user=current_user,
+        issuer_password=data.issuer_password,
     )
 
 
-@router.post("/return", response_model=HistoryEntryOut, dependencies=[Depends(require_permission("perm_return_permits"))])
-def return_firearm(data: ReturnRequest, db: Session = Depends(get_db)):
+@router.post("/return", response_model=HistoryEntryOut)
+def return_firearm(
+    data: ReturnRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("perm_return_permits")),
+):
     return svc.return_firearm(
         db, data.firearm_id, data.actioned_by, data.notes,
         rounds_returned=data.rounds_returned,
@@ -51,6 +63,9 @@ def return_firearm(data: ReturnRequest, db: Session = Depends(get_db)):
         remarks=data.remarks,
         ammunition_returned=data.ammunition_returned,
         permit_returned=data.permit_returned,
+        current_user=current_user,
+        staff_password=data.staff_password,
+        guard_password=data.guard_password,
     )
 
 

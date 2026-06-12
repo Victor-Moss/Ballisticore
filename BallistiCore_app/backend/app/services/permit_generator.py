@@ -37,10 +37,21 @@ def _context(db: Session, permit: Permit, guard: Guard, firearm: Firearm) -> dic
     issued_by_name = issued_by_user.username if issued_by_user else permit.issued_by
     location_name = guard.location.name if guard.location else "—"
     issued_at = permit.issued_at or datetime.utcnow()
-    if permit.guard_signed and permit.guard_signed_at:
-        guard_signature_display = f"E-SIGNED {permit.guard_signed_at.strftime('%Y-%m-%d %H:%M')}"
-    else:
-        guard_signature_display = ""  # blank line for a wet signature
+
+    def _esign(signed, at) -> str:
+        # An e-signature renders as a stamped line; otherwise a blank line is
+        # left for a wet signature.
+        return f"E-SIGNED {at.strftime('%Y-%m-%d %H:%M')}" if signed and at else ""
+
+    guard_signature_display = _esign(permit.guard_signed, permit.guard_signed_at)
+    issuer_signature_display = _esign(permit.issuer_signed, permit.issuer_signed_at)
+    return_guard_signature_display = _esign(permit.return_guard_signed, permit.return_guard_signed_at)
+    return_received_signature_display = _esign(permit.return_received_signed, permit.return_received_signed_at)
+
+    return_received_user = (
+        user_svc.get_by_id(db, permit.return_received_by) if permit.return_received_by else None
+    )
+    return_received_name = return_received_user.username if return_received_user else ""
     return {
         "permit_number": permit.permit_number,
         "guard_name": f"{guard.first_name} {guard.last_name}",
@@ -61,6 +72,13 @@ def _context(db: Session, permit: Permit, guard: Guard, firearm: Firearm) -> dic
         "issued_by_name": issued_by_name,
         "location_name": location_name,
         "guard_signature_display": guard_signature_display,
+        "issuer_signature_display": issuer_signature_display,
+        "return_guard_signature_display": return_guard_signature_display,
+        "return_received_signature_display": return_received_signature_display,
+        "return_received_name": return_received_name or "—",
+        "return_in_order": ("YES" if permit.in_order else "NO") if permit.in_order is not None else "",
+        "return_rounds": str(permit.rounds_returned) if permit.rounds_returned is not None else "",
+        "return_remarks": permit.remarks or "",
     }
 
 
@@ -175,33 +193,37 @@ def generate_full_permit(db: Session, permit: Permit, guard: Guard, firearm: Fir
     elements.append(period_table)
     elements.append(Spacer(1, 2*mm))
 
-    # Authorisation / signatures
+    # Authorisation / signatures (at issue) — "Issued by" (staff) and
+    # "Received by" (guard), each e-signed by entering their password.
     sig_row_height = 10*mm
     auth_data = [
         [Paragraph("<b>AUTHORISATION</b>", centered), "", "", ""],
-        ["Issued by:", ctx["issued_by_name"], "Location / Posted:", ctx["location_name"]],
-        ["Guard Signature:", ctx["guard_signature_display"], "Issuer Signature:", ""],
+        ["Issued by:", ctx["issued_by_name"], "Received by (Guard):", ctx["guard_name"]],
+        ["Issuer Signature:", ctx["issuer_signature_display"], "Guard Signature:", ctx["guard_signature_display"]],
         ["Witness:", "", "CIT Cell / Route:", "—"],
     ]
     auth_table = Table(auth_data, colWidths=[col, col, col, col],
-                       rowHeights=[None, None, sig_row_height, sig_row_height])
+                       rowHeights=[None, None, sig_row_height, None])
     as_ = _section_header_style()
     as_.add("SPAN", (0, 0), (3, 0))
     auth_table.setStyle(as_)
     elements.append(auth_table)
     elements.append(Spacer(1, 2*mm))
 
-    # Return section
+    # Return section — "Returned by" (guard) and "Received by" (staff). Populated
+    # once the firearm is handed back; blank lines until then.
     return_data = [
-        [Paragraph("<b>FIREARM RETURN (TO BE COMPLETED ON RETURN)</b>", centered), "", "", ""],
-        ["Date Firearm Back:", "", "Time Firearm Back:", ""],
-        ["In Order (YES / NO):", "", "Remarks:", ""],
-        ["Return Signature:", "", "Rounds Ammo Returned:", ""],
+        [Paragraph("<b>FIREARM RETURN (COMPLETED ON RETURN)</b>", centered), "", "", ""],
+        ["Returned by (Guard):", ctx["guard_name"], "Returned Signature:", ctx["return_guard_signature_display"]],
+        ["Received by:", ctx["return_received_name"], "Received Signature:", ctx["return_received_signature_display"]],
+        ["In Order (YES / NO):", ctx["return_in_order"], "Rounds Ammo Returned:", ctx["return_rounds"]],
+        ["Remarks:", ctx["return_remarks"], "", ""],
     ]
     return_table = Table(return_data, colWidths=[col, col, col, col],
-                         rowHeights=[None, sig_row_height, sig_row_height, sig_row_height])
+                         rowHeights=[None, sig_row_height, sig_row_height, None, None])
     rs = _section_header_style()
     rs.add("SPAN", (0, 0), (3, 0))
+    rs.add("SPAN", (1, 4), (3, 4))
     return_table.setStyle(rs)
     elements.append(return_table)
     elements.append(Spacer(1, 3*mm))
@@ -298,8 +320,8 @@ def generate_mini_permit(db: Session, permit: Permit, guard: Guard, firearm: Fir
     elements.append(mini_section("ISSUED BY", [
         ("Name:", ctx["issued_by_name"]),
         ("Location:", ctx["location_name"]),
-        ("Guard Sig:", ctx["guard_signature_display"] or " " * 30),
-        ("Issuer Sig:", " " * 30),
+        ("Issuer Sig:", ctx["issuer_signature_display"] or " " * 20),
+        ("Guard Sig:", ctx["guard_signature_display"] or " " * 20),
     ]))
     elements.append(Spacer(1, 1*mm))
     elements.append(Paragraph(f"BallistiCore — {ctx['issued_date']}", tiny))

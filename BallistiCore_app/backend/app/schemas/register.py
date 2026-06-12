@@ -22,9 +22,13 @@ class IssueRequest(BaseModel):
     firearm_inspected_correct: Optional[bool] = None
     cit_id: Optional[str] = None
     responsible_person_name: Optional[str] = None
-    # Electronic signature — the guard's password, entered at the operator terminal.
-    # Required when the guard has a sign-in account; ignored otherwise.
+    # Electronic signatures. Both parties sign by entering their own password:
+    #   guard_password  — the receiving guard ("Received by"). Required when the
+    #                     guard has a sign-in account; ignored otherwise.
+    #   issuer_password — the issuing staff member ("Issued by"). Always required;
+    #                     verified against the authenticated operator.
     guard_password: Optional[str] = None
+    issuer_password: Optional[str] = None
 
 
 class ReturnRequest(BaseModel):
@@ -39,6 +43,13 @@ class ReturnRequest(BaseModel):
     # History fields
     ammunition_returned: Optional[int] = None
     permit_returned: Optional[bool] = None
+    # Electronic signatures on return:
+    #   guard_password — the returning guard ("Returned by"). Required when the
+    #                    guard has a sign-in account; ignored otherwise.
+    #   staff_password — the staff member receiving the return ("Received by").
+    #                    Always required; verified against the authenticated operator.
+    guard_password: Optional[str] = None
+    staff_password: Optional[str] = None
 
 
 class RegisterEntryOut(BaseModel):
@@ -55,6 +66,8 @@ class RegisterEntryOut(BaseModel):
     responsible_person_name: Optional[str] = None
     guard_signed: bool = False
     guard_signed_at: Optional[datetime] = None
+    issuer_signed: bool = False
+    issuer_signed_at: Optional[datetime] = None
     guard: Optional[GuardSummary] = None
     firearm: Optional[FirearmSummary] = None
 
@@ -79,6 +92,8 @@ class HistoryEntryOut(BaseModel):
     responsible_person_name: Optional[str] = None
     guard_signed: bool = False
     guard_signed_at: Optional[datetime] = None
+    issuer_signed: bool = False
+    issuer_signed_at: Optional[datetime] = None
     guard: Optional[GuardSummary] = None
     firearm: Optional[FirearmSummary] = None
 
