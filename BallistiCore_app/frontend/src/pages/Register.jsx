@@ -31,6 +31,40 @@ export default function Register() {
       .finally(() => setLoading(false))
   }, [])
 
+  const formatDate = (value) =>
+    new Date(value).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })
+
+  const ammoCell = (entry) => (
+    <>
+      {entry.ammunition_issued != null ? entry.ammunition_issued : '—'}
+      {entry.ammunition_type && (
+        <p className="text-xs text-slate-500">{entry.ammunition_type}</p>
+      )}
+    </>
+  )
+
+  const permitActions = (entry) =>
+    entry.permit_id ? (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => handleDownload(entry.permit_id, 'full')}
+          disabled={downloading === `${entry.permit_id}-full`}
+          className="text-xs text-blue-400 hover:underline disabled:opacity-50"
+        >
+          {downloading === `${entry.permit_id}-full` ? '…' : 'Full'}
+        </button>
+        <button
+          onClick={() => handleDownload(entry.permit_id, 'mini')}
+          disabled={downloading === `${entry.permit_id}-mini`}
+          className="text-xs text-blue-400 hover:underline disabled:opacity-50"
+        >
+          {downloading === `${entry.permit_id}-mini` ? '…' : 'Mini'}
+        </button>
+      </div>
+    ) : (
+      <span className="text-xs text-slate-500">—</span>
+    )
+
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -71,71 +105,72 @@ export default function Register() {
           </Link>
         </div>
       ) : (
-        <div className="bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-800/40 border-b border-slate-700">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Guard</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Firearm</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Issued</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ammo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Permit</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/60">
-              {register.map((entry) => (
-                <tr key={entry.id} className="hover:bg-slate-800/50">
-                  <td className="px-4 py-3">
+        <>
+          {/* Desktop / tablet: table (md and up) */}
+          <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-800/40 border-b border-slate-700">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Guard</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Firearm</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Issued</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ammo</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Permit</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/60">
+                {register.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-slate-800/50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-slate-100">
+                        {entry.guard?.first_name} {entry.guard?.last_name}
+                      </p>
+                      {entry.guard?.psira_number && (
+                        <p className="text-xs text-slate-400">{entry.guard.psira_number}</p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-slate-100">{entry.firearm?.make} {entry.firearm?.model}</p>
+                      <p className="text-xs text-slate-400">{entry.firearm?.serial_number}</p>
+                    </td>
+                    <td className="px-4 py-3 text-slate-400">{formatDate(entry.issued_at)}</td>
+                    <td className="px-4 py-3 text-slate-400 text-sm">{ammoCell(entry)}</td>
+                    <td className="px-4 py-3">{permitActions(entry)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: stacked cards (below md) */}
+          <div className="md:hidden space-y-3">
+            {register.map((entry) => (
+              <div key={entry.id} className="bg-slate-800/60 rounded-xl border border-slate-700 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
                     <p className="font-medium text-slate-100">
                       {entry.guard?.first_name} {entry.guard?.last_name}
                     </p>
                     {entry.guard?.psira_number && (
-                      <p className="text-xs text-slate-400">{entry.guard.psira_number}</p>
+                      <p className="text-xs text-slate-400 mt-0.5">{entry.guard.psira_number}</p>
                     )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-100">{entry.firearm?.make} {entry.firearm?.model}</p>
-                    <p className="text-xs text-slate-400">{entry.firearm?.serial_number}</p>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400">
-                    {new Date(entry.issued_at).toLocaleString('en-ZA', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 text-sm">
-                    {entry.ammunition_issued != null ? entry.ammunition_issued : '—'}
-                    {entry.ammunition_type && (
-                      <p className="text-xs text-slate-500">{entry.ammunition_type}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    {entry.permit_id ? (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleDownload(entry.permit_id, 'full')}
-                          disabled={downloading === `${entry.permit_id}-full`}
-                          className="text-xs text-blue-400 hover:underline disabled:opacity-50"
-                        >
-                          {downloading === `${entry.permit_id}-full` ? '…' : 'Full'}
-                        </button>
-                        <button
-                          onClick={() => handleDownload(entry.permit_id, 'mini')}
-                          disabled={downloading === `${entry.permit_id}-mini`}
-                          className="text-xs text-blue-400 hover:underline disabled:opacity-50"
-                        >
-                          {downloading === `${entry.permit_id}-mini` ? '…' : 'Mini'}
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-slate-500">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <p className="text-sm text-slate-200 mt-1">
+                      {entry.firearm?.make} {entry.firearm?.model}
+                      <span className="ml-1 text-xs text-slate-500">{entry.firearm?.serial_number}</span>
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-400 text-right shrink-0">{formatDate(entry.issued_at)}</p>
+                </div>
+                <div className="mt-3 pt-3 border-t border-slate-700/60 flex items-end justify-between gap-3">
+                  <div className="text-sm text-slate-400">
+                    <span className="text-xs text-slate-500">Ammo: </span>{ammoCell(entry)}
+                  </div>
+                  {permitActions(entry)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

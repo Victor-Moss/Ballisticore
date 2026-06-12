@@ -59,6 +59,32 @@ export default function History() {
     setFilters({ guard_id: '', firearm_id: '', from_date: '', to_date: '' })
   }
 
+  const formatDate = (value) =>
+    new Date(value).toLocaleString('en-ZA', { dateStyle: 'medium', timeStyle: 'short' })
+
+  const actionBadge = (entry) => (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+      entry.action.toLowerCase() === 'issued'
+        ? 'bg-blue-100 text-blue-300'
+        : 'bg-green-100 text-green-300'
+    }`}>
+      {entry.action.toLowerCase() === 'issued' ? 'Issued' : 'Returned'}
+    </span>
+  )
+
+  const ammoCell = (entry) => (
+    <>
+      {entry.action.toLowerCase() === 'issued' && entry.ammunition_issued != null
+        ? `${entry.ammunition_issued} issued`
+        : entry.action.toLowerCase() === 'returned' && entry.ammunition_returned != null
+        ? `${entry.ammunition_returned} returned`
+        : '—'}
+      {entry.ammunition_type && (
+        <p className="text-slate-500">{entry.ammunition_type}</p>
+      )}
+    </>
+  )
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-4">
@@ -151,57 +177,60 @@ export default function History() {
           <p className="text-slate-500 text-sm">No records found</p>
         </div>
       ) : (
-        <div className="bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-800/40 border-b border-slate-700">
-              <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Guard</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Firearm</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Action</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ammo</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Date/Time</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/60">
-              {history.map((entry) => (
-                <tr key={entry.id} className="hover:bg-slate-800/50">
-                  <td className="px-4 py-3">
-                    <p className="text-slate-100">{entry.guard?.first_name} {entry.guard?.last_name}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="text-slate-100">{entry.firearm?.make} {entry.firearm?.model}</p>
-                    <p className="text-xs text-slate-400">{entry.firearm?.serial_number}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                      entry.action.toLowerCase() === 'issued'
-                        ? 'bg-blue-100 text-blue-300'
-                        : 'bg-green-100 text-green-300'
-                    }`}>
-                      {entry.action.toLowerCase() === 'issued' ? 'Issued' : 'Returned'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
-                    {entry.action.toLowerCase() === 'issued' && entry.ammunition_issued != null
-                      ? `${entry.ammunition_issued} issued`
-                      : entry.action.toLowerCase() === 'returned' && entry.ammunition_returned != null
-                      ? `${entry.ammunition_returned} returned`
-                      : '—'}
-                    {entry.ammunition_type && (
-                      <p className="text-slate-500">{entry.ammunition_type}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
-                    {new Date(entry.actioned_at).toLocaleString('en-ZA', {
-                      dateStyle: 'medium',
-                      timeStyle: 'short',
-                    })}
-                  </td>
+        <>
+          {/* Desktop / tablet: table (md and up) */}
+          <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-800/40 border-b border-slate-700">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Guard</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Firearm</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Action</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Ammo</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Date/Time</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-700/60">
+                {history.map((entry) => (
+                  <tr key={entry.id} className="hover:bg-slate-800/50">
+                    <td className="px-4 py-3">
+                      <p className="text-slate-100">{entry.guard?.first_name} {entry.guard?.last_name}</p>
+                    </td>
+                    <td className="px-4 py-3">
+                      <p className="text-slate-100">{entry.firearm?.make} {entry.firearm?.model}</p>
+                      <p className="text-xs text-slate-400">{entry.firearm?.serial_number}</p>
+                    </td>
+                    <td className="px-4 py-3">{actionBadge(entry)}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">{ammoCell(entry)}</td>
+                    <td className="px-4 py-3 text-slate-400 text-xs">{formatDate(entry.actioned_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: stacked cards (below md) */}
+          <div className="md:hidden space-y-3">
+            {history.map((entry) => (
+              <div key={entry.id} className="bg-slate-800/60 rounded-xl border border-slate-700 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-slate-100 font-medium">{entry.guard?.first_name} {entry.guard?.last_name}</p>
+                    <p className="text-sm text-slate-200 mt-0.5">
+                      {entry.firearm?.make} {entry.firearm?.model}
+                      <span className="ml-1 text-xs text-slate-500">{entry.firearm?.serial_number}</span>
+                    </p>
+                  </div>
+                  <div className="shrink-0">{actionBadge(entry)}</div>
+                </div>
+                <div className="mt-3 flex items-end justify-between gap-3 text-xs text-slate-400">
+                  <div>{ammoCell(entry)}</div>
+                  <span className="shrink-0">{formatDate(entry.actioned_at)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )

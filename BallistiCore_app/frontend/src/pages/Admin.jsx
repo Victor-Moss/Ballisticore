@@ -174,6 +174,38 @@ function UsersTab({ currentUser }) {
     load()
   }
 
+  const roleBadge = (u) =>
+    u.is_admin
+      ? <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Admin</span>
+      : <span className="text-xs text-slate-400">Operator</span>
+
+  const statusBadge = (u) =>
+    u.is_active
+      ? <span className="text-xs text-green-400">Active</span>
+      : <span className="text-xs text-slate-500">Inactive</span>
+
+  // True when the current operator can act on user rows at all — drives whether
+  // the actions block is shown (avoids an empty bordered footer on mobile cards).
+  const canActOnUsers = canModify || canChangePw
+
+  const userActions = (u) => (
+    <div className="flex items-center gap-3">
+      {(canModify || canChangePw) && (
+        <button onClick={() => openEdit(u)} className="text-sm text-blue-400 hover:underline">Edit</button>
+      )}
+      {canModify && u.id !== currentUser?.id && (
+        <button onClick={() => handleToggleActive(u)}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            u.is_active
+              ? 'bg-red-500/10 text-red-400 hover:bg-red-100'
+              : 'bg-green-500/10 text-green-400 hover:bg-green-100'
+          }`}>
+          {u.is_active ? 'Deactivate' : 'Reactivate'}
+        </button>
+      )}
+    </div>
+  )
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -190,7 +222,8 @@ function UsersTab({ currentUser }) {
         <p className="mb-4 text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">{success}</p>
       )}
 
-      <div className="bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+      {/* Desktop / tablet: table (md and up) */}
+      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-800/40 border-b border-slate-700">
             <tr>
@@ -208,35 +241,37 @@ function UsersTab({ currentUser }) {
               <tr key={u.id} className="hover:bg-slate-800/50">
                 <td className="px-4 py-3 font-medium text-slate-100">{u.username}</td>
                 <td className="px-4 py-3 text-slate-400 text-xs">{u.personnel_number || '—'}</td>
+                <td className="px-4 py-3">{roleBadge(u)}</td>
+                <td className="px-4 py-3">{statusBadge(u)}</td>
                 <td className="px-4 py-3">
-                  {u.is_admin
-                    ? <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Admin</span>
-                    : <span className="text-xs text-slate-400">Operator</span>}
-                </td>
-                <td className="px-4 py-3">
-                  {u.is_active
-                    ? <span className="text-xs text-green-400">Active</span>
-                    : <span className="text-xs text-slate-500">Inactive</span>}
-                </td>
-                <td className="px-4 py-3 text-right flex items-center justify-end gap-3">
-                  {(canModify || canChangePw) && (
-                    <button onClick={() => openEdit(u)} className="text-sm text-blue-400 hover:underline">Edit</button>
-                  )}
-                  {canModify && u.id !== currentUser?.id && (
-                    <button onClick={() => handleToggleActive(u)}
-                      className={`text-xs px-2 py-1 rounded transition-colors ${
-                        u.is_active
-                          ? 'bg-red-500/10 text-red-400 hover:bg-red-100'
-                          : 'bg-green-500/10 text-green-400 hover:bg-green-100'
-                      }`}>
-                      {u.is_active ? 'Deactivate' : 'Reactivate'}
-                    </button>
-                  )}
+                  <div className="flex items-center justify-end gap-3">{userActions(u)}</div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: stacked cards (below md) */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : users.map((u) => (
+          <div key={u.id} className="bg-slate-800/60 rounded-xl border border-slate-700 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-slate-100">{u.username}</p>
+                {u.personnel_number && (
+                  <p className="text-xs text-slate-400 mt-0.5">Personnel #{u.personnel_number}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">{roleBadge(u)}{statusBadge(u)}</div>
+            </div>
+            {canActOnUsers && (
+              <div className="mt-3 pt-3 border-t border-slate-700/60">{userActions(u)}</div>
+            )}
+          </div>
+        ))}
       </div>
 
       {/* Add / Edit dialog */}
@@ -569,6 +604,25 @@ function AmmunitionTypesTab() {
     load()
   }
 
+  const statusBadge = (t) =>
+    t.is_active
+      ? <span className="text-xs text-green-400">Active</span>
+      : <span className="text-xs text-slate-500">Inactive</span>
+
+  const typeActions = (t) => (
+    <div className="flex items-center gap-3">
+      <button onClick={() => openEdit(t)} className="text-sm text-blue-400 hover:underline">Edit</button>
+      <button onClick={() => handleToggleActive(t)}
+        className={`text-xs px-2 py-1 rounded transition-colors ${
+          t.is_active
+            ? 'bg-red-500/10 text-red-400 hover:bg-red-100'
+            : 'bg-green-500/10 text-green-400 hover:bg-green-100'
+        }`}>
+        {t.is_active ? 'Deactivate' : 'Reactivate'}
+      </button>
+    </div>
+  )
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -583,7 +637,8 @@ function AmmunitionTypesTab() {
         <p className="mb-4 text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">{success}</p>
       )}
 
-      <div className="bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+      {/* Desktop / tablet: table (md and up) */}
+      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-800/40 border-b border-slate-700">
             <tr>
@@ -602,26 +657,34 @@ function AmmunitionTypesTab() {
               <tr key={t.id} className="hover:bg-slate-800/50">
                 <td className="px-4 py-3 font-medium text-slate-100">{t.name}</td>
                 <td className="px-4 py-3 text-slate-400 text-xs">{t.description || '—'}</td>
+                <td className="px-4 py-3">{statusBadge(t)}</td>
                 <td className="px-4 py-3">
-                  {t.is_active
-                    ? <span className="text-xs text-green-400">Active</span>
-                    : <span className="text-xs text-slate-500">Inactive</span>}
-                </td>
-                <td className="px-4 py-3 text-right flex items-center justify-end gap-3">
-                  <button onClick={() => openEdit(t)} className="text-sm text-blue-400 hover:underline">Edit</button>
-                  <button onClick={() => handleToggleActive(t)}
-                    className={`text-xs px-2 py-1 rounded transition-colors ${
-                      t.is_active
-                        ? 'bg-red-500/10 text-red-400 hover:bg-red-100'
-                        : 'bg-green-500/10 text-green-400 hover:bg-green-100'
-                    }`}>
-                    {t.is_active ? 'Deactivate' : 'Reactivate'}
-                  </button>
+                  <div className="flex items-center justify-end gap-3">{typeActions(t)}</div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: stacked cards (below md) */}
+      <div className="md:hidden space-y-3">
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : types.length === 0 ? (
+          <p className="text-sm text-slate-500">No ammunition types yet</p>
+        ) : types.map((t) => (
+          <div key={t.id} className="bg-slate-800/60 rounded-xl border border-slate-700 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium text-slate-100">{t.name}</p>
+                {t.description && <p className="text-xs text-slate-400 mt-0.5">{t.description}</p>}
+              </div>
+              <div className="shrink-0">{statusBadge(t)}</div>
+            </div>
+            <div className="mt-3 pt-3 border-t border-slate-700/60">{typeActions(t)}</div>
+          </div>
+        ))}
       </div>
 
       {/* Add / Edit dialog */}
@@ -752,7 +815,8 @@ function ImportDataTab() {
           {report.failed > 0 && (
             <div>
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Rows that failed</p>
-              <div className="border border-slate-700 rounded-lg overflow-hidden">
+              {/* Desktop / tablet: table (md and up) */}
+              <div className="hidden md:block border border-slate-700 rounded-lg overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-800/40 border-b border-slate-700">
                     <tr>
@@ -771,6 +835,19 @@ function ImportDataTab() {
                     )))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile: stacked cards (below md) */}
+              <div className="md:hidden space-y-2">
+                {report.sheets.flatMap((s) => s.errors.map((e) => (
+                  <div key={`${s.sheet}-${e.row}`} className="border border-slate-700 rounded-lg p-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-300">{s.sheet}</span>
+                      <span className="font-mono text-slate-400">Row {e.row}</span>
+                    </div>
+                    <p className="mt-1 text-xs text-red-300">{e.message}</p>
+                  </div>
+                )))}
               </div>
               <p className="mt-2 text-xs text-slate-500">
                 Fix these rows in your file and upload again — already-imported rows will be reported as duplicates and skipped.
