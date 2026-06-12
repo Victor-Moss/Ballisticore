@@ -123,6 +123,10 @@ export default function IssueFirearm() {
 
       <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6 space-y-5">
 
+        {error && (
+          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>
+        )}
+
         {/* Core selection */}
         <div className="space-y-4">
           <div>
@@ -307,10 +311,6 @@ export default function IssueFirearm() {
           <textarea name="notes" value={form.notes} onChange={handleChange} rows={2}
             className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
         </div>
-
-        {error && (
-          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>
-        )}
 
         <div className="flex gap-3 pt-1">
           <button type="submit"

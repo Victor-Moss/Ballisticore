@@ -126,6 +126,8 @@ export default function FirearmDetail() {
 
       <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6">
 
+        {error && <p className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
+
         {/* Identity fields — editable on create, read-only on edit */}
         {isNew ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -212,7 +214,6 @@ export default function FirearmDetail() {
           </label>
         )}
 
-        {error && <p className="mt-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
         {success && <p className="mt-4 text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">{success}</p>}
 
         <div className="mt-5 flex items-center justify-between">
