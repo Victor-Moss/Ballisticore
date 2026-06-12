@@ -36,7 +36,7 @@ export default function History() {
     Promise.all([getGuards(true), getFirearms(true)]).then(([gRes, fRes]) => {
       setGuards(gRes.data)
       setFirearms(fRes.data)
-    })
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {

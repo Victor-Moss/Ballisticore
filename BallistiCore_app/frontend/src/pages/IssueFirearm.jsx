@@ -29,11 +29,13 @@ export default function IssueFirearm() {
   const selectedFirearm = firearms.find((f) => f.id === form.firearm_id)
 
   useEffect(() => {
-    Promise.all([getGuards(), getFirearms()]).then(([gRes, fRes]) => {
-      setGuards(gRes.data.filter((g) => g.is_active))
-      setFirearms(fRes.data.filter((f) => f.is_active && f.is_available !== false))
-      setLoading(false)
-    })
+    Promise.all([getGuards(), getFirearms()])
+      .then(([gRes, fRes]) => {
+        setGuards(gRes.data.filter((g) => g.is_active))
+        setFirearms(fRes.data.filter((f) => f.is_active && f.is_available !== false))
+      })
+      .catch(() => setError('Could not load guards and firearms. Please refresh to try again.'))
+      .finally(() => setLoading(false))
   }, [])
 
   // Auto-fill SAPS competency when guard + firearm type are both selected

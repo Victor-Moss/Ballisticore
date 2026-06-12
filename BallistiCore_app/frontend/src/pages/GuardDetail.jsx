@@ -42,7 +42,7 @@ export default function GuardDetail() {
   const [tempPw, setTempPw] = useState('')
 
   useEffect(() => {
-    getFirearms().then((res) => setFirearms(res.data))
+    getFirearms().then((res) => setFirearms(res.data)).catch(() => {})
     if (!isNew) {
       getGuard(id).then((res) => {
         const g = res.data
@@ -73,9 +73,10 @@ export default function GuardDetail() {
         // Suggest a username (first initial + surname) when none exists yet
         const suggested = `${(g.first_name || '').charAt(0)}${g.last_name || ''}`.toLowerCase().replace(/\s+/g, '')
         setAcct((a) => ({ ...a, username: g.username || suggested }))
-        setLoading(false)
       })
-      getPermissionsForGuard(id).then((res) => setPermissions(res.data))
+        .catch(() => setError('Could not load this guard. Please go back and try again.'))
+        .finally(() => setLoading(false))
+      getPermissionsForGuard(id).then((res) => setPermissions(res.data)).catch(() => {})
     }
   }, [id, isNew])
 

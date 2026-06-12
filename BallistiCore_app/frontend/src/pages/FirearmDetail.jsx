@@ -49,21 +49,23 @@ export default function FirearmDetail() {
 
   useEffect(() => {
     if (!isNew) {
-      getFirearm(id).then((res) => {
-        const fa = res.data
-        setForm({
-          make:               fa.make || '',
-          model:              fa.model || '',
-          serial_number:      fa.serial_number || '',
-          calibre:            fa.calibre || '',
-          license_number:     fa.license_number || '',
-          description:        fa.description || '',
-          type:               fa.type || '',
-          ammunition_type_id: fa.ammunition_type_id || '',
-          is_active:          fa.is_active,
+      getFirearm(id)
+        .then((res) => {
+          const fa = res.data
+          setForm({
+            make:               fa.make || '',
+            model:              fa.model || '',
+            serial_number:      fa.serial_number || '',
+            calibre:            fa.calibre || '',
+            license_number:     fa.license_number || '',
+            description:        fa.description || '',
+            type:               fa.type || '',
+            ammunition_type_id: fa.ammunition_type_id || '',
+            is_active:          fa.is_active,
+          })
         })
-        setLoading(false)
-      })
+        .catch(() => setError('Could not load this firearm. Please go back and try again.'))
+        .finally(() => setLoading(false))
     }
   }, [id, isNew])
 
