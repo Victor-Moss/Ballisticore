@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getFirearm, createFirearm, updateFirearm, deleteFirearm } from '../api/firearms'
 import { getAmmunitionTypes } from '../api/ammunitionTypes'
@@ -41,6 +41,7 @@ export default function FirearmDetail() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const errorRef = useRef(null)
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
@@ -68,6 +69,12 @@ export default function FirearmDetail() {
         .finally(() => setLoading(false))
     }
   }, [id, isNew])
+
+  // Scroll the error banner into view whenever an error appears — submit
+  // failures happen at the bottom of the form, where the top banner is hidden.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [error])
 
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
@@ -126,7 +133,7 @@ export default function FirearmDetail() {
 
       <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6">
 
-        {error && <p className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p ref={errorRef} className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
 
         {/* Identity fields — editable on create, read-only on edit */}
         {isNew ? (

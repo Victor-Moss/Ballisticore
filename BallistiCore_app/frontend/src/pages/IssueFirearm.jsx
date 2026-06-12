@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getGuards, guardRequestReset, guardResetPassword } from '../api/guards'
 import { getFirearms } from '../api/firearms'
@@ -22,6 +22,7 @@ export default function IssueFirearm() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const errorRef = useRef(null)
   // Inline "guard forgot password" reset, driven from the issue screen
   const [reset, setReset] = useState({ open: false, sent: false, otp: '', newPassword: '', msg: '', busy: false })
 
@@ -37,6 +38,12 @@ export default function IssueFirearm() {
       .catch(() => setError('Could not load guards and firearms. Please refresh to try again.'))
       .finally(() => setLoading(false))
   }, [])
+
+  // Scroll the error banner into view whenever an error appears — submit
+  // failures happen at the bottom of the form, where the top banner is hidden.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [error])
 
   // Auto-fill SAPS competency when guard + firearm type are both selected
   useEffect(() => {
@@ -124,7 +131,7 @@ export default function IssueFirearm() {
       <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6 space-y-5">
 
         {error && (
-          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>
+          <p ref={errorRef} className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>
         )}
 
         {/* Core selection */}

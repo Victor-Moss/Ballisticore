@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getGuard, createGuard, updateGuard, setGuardAccount, resetGuardPassword, deleteGuardAccount } from '../api/guards'
 import { getFirearms } from '../api/firearms'
@@ -32,6 +32,7 @@ export default function GuardDetail() {
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const errorRef = useRef(null)
   const [success, setSuccess] = useState('')
 
   // Sign-in account
@@ -79,6 +80,12 @@ export default function GuardDetail() {
       getPermissionsForGuard(id).then((res) => setPermissions(res.data)).catch(() => {})
     }
   }, [id, isNew])
+
+  // Scroll the error banner into view whenever an error appears — submit
+  // failures happen at the bottom of the form, where the top banner is hidden.
+  useEffect(() => {
+    if (error) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [error])
 
   const handleChange = (e) => {
     const val = e.target.type === 'checkbox' ? e.target.checked : e.target.value
@@ -231,7 +238,7 @@ export default function GuardDetail() {
 
       <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6 mb-6 space-y-5">
 
-        {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
+        {error && <p ref={errorRef} className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
 
         {/* Name */}
         {isNew ? (
