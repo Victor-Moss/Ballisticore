@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { BrandingProvider, useBranding } from './context/BrandingContext'
+import { LicenseProvider } from './context/LicenseContext'
 import { ThemeProvider } from './context/ThemeContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
@@ -84,9 +85,11 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
         <BrandingProvider>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
+          <LicenseProvider>
+            <AuthProvider>
+              <AppRoutes />
+            </AuthProvider>
+          </LicenseProvider>
         </BrandingProvider>
       </ThemeProvider>
     </BrowserRouter>

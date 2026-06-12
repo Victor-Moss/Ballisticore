@@ -5,10 +5,12 @@ import { getFirearms } from '../api/firearms'
 import { issueFirearm } from '../api/register'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
+import { useLicense } from '../context/LicenseContext'
 
 export default function IssueFirearm() {
   const { user } = useAuth()
   const { cit_enabled } = useBranding()
+  const { read_only } = useLicense()
   const navigate = useNavigate()
   const [guards, setGuards] = useState([])
   const [firearms, setFirearms] = useState([])
@@ -134,6 +136,12 @@ export default function IssueFirearm() {
 
         {error && (
           <p ref={errorRef} className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>
+        )}
+
+        {read_only && (
+          <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+            Subscription expired — the register is read-only. Issuing firearms is disabled until the licence is renewed.
+          </p>
         )}
 
         {/* Core selection */}
@@ -341,7 +349,7 @@ export default function IssueFirearm() {
 
         <div className="flex gap-3 pt-1">
           <button type="submit"
-            disabled={submitting || (selectedGuard?.has_account && !form.guard_password) || !form.issuer_password}
+            disabled={read_only || submitting || (selectedGuard?.has_account && !form.guard_password) || !form.issuer_password}
             className="bg-blue-600 text-white text-sm px-6 py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
             {submitting ? 'Issuing…' : 'Sign & Issue Firearm'}
           </button>

@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom'
 import { getCurrentRegister } from '../api/register'
 import { downloadRegisterExcel } from '../api/reports'
 import { downloadPermit, downloadMiniPermit } from '../api/permits'
+import { useLicense } from '../context/LicenseContext'
 
 export default function Register() {
+  const { read_only } = useLicense()
   const [register, setRegister] = useState([])
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
@@ -80,18 +82,33 @@ export default function Register() {
           >
             {exporting ? 'Exporting…' : 'Export Excel'}
           </button>
-          <Link
-            to="/issue"
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Issue
-          </Link>
-          <Link
-            to="/return"
-            className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-          >
-            Return
-          </Link>
+          {read_only ? (
+            <>
+              <span title="Subscription expired — read-only mode"
+                className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg opacity-50 cursor-not-allowed">
+                Issue
+              </span>
+              <span title="Subscription expired — read-only mode"
+                className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg opacity-50 cursor-not-allowed">
+                Return
+              </span>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/issue"
+                className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Issue
+              </Link>
+              <Link
+                to="/return"
+                className="bg-green-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Return
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

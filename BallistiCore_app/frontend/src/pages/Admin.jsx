@@ -7,6 +7,7 @@ import {
 import { downloadTemplate, uploadImport } from '../api/imports'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
+import { useLicense } from '../context/LicenseContext'
 import { hasPerm, isSuperAdmin, canAccessAdmin } from '../utils/permissions'
 import AccessDenied from '../components/AccessDenied'
 
@@ -68,6 +69,7 @@ function Tab({ label, active, onClick }) {
 
 // ── Users tab ─────────────────────────────────────────────────────────────────
 function UsersTab({ currentUser }) {
+  const { read_only } = useLicense()
   const [users, setUsers]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [editingUser, setEditing] = useState(null)
@@ -211,8 +213,9 @@ function UsersTab({ currentUser }) {
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-slate-400">{users.length} user{users.length !== 1 ? 's' : ''}</p>
         {canAdd && (
-          <button onClick={openNew}
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+          <button onClick={openNew} disabled={read_only}
+            title={read_only ? 'Subscription expired — read-only mode' : undefined}
+            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
             + Add User
           </button>
         )}
@@ -549,6 +552,7 @@ function CompanyTab() {
 const BLANK_AMMO = { name: '', description: '' }
 
 function AmmunitionTypesTab() {
+  const { read_only } = useLicense()
   const [types, setTypes]         = useState([])
   const [loading, setLoading]     = useState(true)
   const [editing, setEditing]     = useState(null)   // null = closed, {} = new, {…} = edit
@@ -627,8 +631,9 @@ function AmmunitionTypesTab() {
     <>
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-slate-400">{types.length} ammunition type{types.length !== 1 ? 's' : ''}</p>
-        <button onClick={openNew}
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+        <button onClick={openNew} disabled={read_only}
+          title={read_only ? 'Subscription expired — read-only mode' : undefined}
+          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
           + Add Ammunition Type
         </button>
       </div>

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # the self-hosted installer. Left blank in dev, where Vite serves the UI.
     FRONTEND_DIST: str = ""
 
+    # Licensing. LICENSE_FILE overrides the default backend/license.key location.
+    # LICENSE_ENFORCE=false disables read-only enforcement (dev/testing only).
+    LICENSE_FILE: str = ""
+    LICENSE_ENFORCE: bool = True
+
     def get_cors_origins(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 

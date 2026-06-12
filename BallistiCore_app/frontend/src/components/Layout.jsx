@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
+import { useLicense } from '../context/LicenseContext'
 import { useTheme } from '../context/ThemeContext'
 import { hasPerm, canAccessAdmin } from '../utils/permissions'
 import Logo from './Logo'
@@ -43,6 +44,7 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { app_name, company_name } = useBranding()
+  const { read_only, state: licenseState, message: licenseMessage } = useLicense()
   // Off-canvas sidebar state — only relevant below the `md` breakpoint (768px).
   // At `md` and up the sidebar is always visible and this is ignored.
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -52,9 +54,11 @@ export default function Layout({ children }) {
     navigate('/login')
   }
 
-  const visibleItems = navItems.filter((item) =>
-    item.admin ? canAccessAdmin(user) : hasPerm(user, item.perm)
-  )
+  const visibleItems = navItems
+    .filter((item) => (item.admin ? canAccessAdmin(user) : hasPerm(user, item.perm)))
+    // In read-only mode, hide the firearm-movement actions (Issue/Return) — the
+    // server rejects them anyway. Viewing routes stay available.
+    .filter((item) => !(read_only && (item.to === '/issue' || item.to === '/return')))
 
   const initials = (user?.username || '?').slice(0, 2).toUpperCase()
 
@@ -161,6 +165,15 @@ export default function Layout({ children }) {
             <ThemeToggle />
           </div>
         </header>
+        {/* License banner — red & persistent in read-only (expired/invalid),
+            amber as expiry approaches. */}
+        {(read_only || licenseState === 'warning') && licenseMessage && (
+          <div className={`shrink-0 px-4 py-2 text-sm font-medium text-center ${
+            read_only ? 'bg-red-600 text-white' : 'bg-amber-500 text-amber-950'
+          }`}>
+            {licenseMessage}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto">
           {children}
         </div>

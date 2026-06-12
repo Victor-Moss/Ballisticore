@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCurrentRegister, returnFirearm } from '../api/register'
 import { useAuth } from '../context/AuthContext'
+import { useLicense } from '../context/LicenseContext'
 
 export default function ReturnFirearm() {
   const { user } = useAuth()
+  const { read_only } = useLicense()
   const navigate = useNavigate()
   const [register, setRegister] = useState([])
   const [form, setForm] = useState({
@@ -74,6 +76,12 @@ export default function ReturnFirearm() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6 space-y-5">
+
+          {read_only && (
+            <p className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-2">
+              Subscription expired — the register is read-only. Recording returns is disabled until the licence is renewed.
+            </p>
+          )}
 
           {/* Firearm selection */}
           <div>
@@ -200,7 +208,7 @@ export default function ReturnFirearm() {
 
           <div className="flex gap-3 pt-1">
             <button type="submit"
-              disabled={submitting || !form.staff_password || (selectedGuard?.has_account && !form.guard_password)}
+              disabled={read_only || submitting || !form.staff_password || (selectedGuard?.has_account && !form.guard_password)}
               className="bg-green-600 text-white text-sm px-6 py-2.5 rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
               {submitting ? 'Recording…' : 'Sign & Record Return'}
             </button>

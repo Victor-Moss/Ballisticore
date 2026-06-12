@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getGuards, deactivateGuard, reactivateGuard, deleteGuard } from '../api/guards'
 import { useAuth } from '../context/AuthContext'
+import { useLicense } from '../context/LicenseContext'
 
 export default function Guards() {
   const { user } = useAuth()
+  const { read_only } = useLicense()
   const [guards, setGuards] = useState([])
   const [includeInactive, setIncludeInactive] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -57,12 +59,19 @@ export default function Guards() {
             />
             Show inactive
           </label>
-          <Link
-            to="/guards/new"
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            + Add Guard
-          </Link>
+          {read_only ? (
+            <span title="Subscription expired — read-only mode"
+              className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg opacity-50 cursor-not-allowed">
+              + Add Guard
+            </span>
+          ) : (
+            <Link
+              to="/guards/new"
+              className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              + Add Guard
+            </Link>
+          )}
         </div>
       </div>
 

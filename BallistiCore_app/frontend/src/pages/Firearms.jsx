@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getFirearms, deleteFirearm } from '../api/firearms'
 import { useAuth } from '../context/AuthContext'
+import { useLicense } from '../context/LicenseContext'
 
 export default function Firearms() {
   const { user } = useAuth()
+  const { read_only } = useLicense()
   const [firearms, setFirearms] = useState([])
   const [includeInactive, setIncludeInactive] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -46,12 +48,19 @@ export default function Firearms() {
             />
             Show inactive
           </label>
-          <Link
-            to="/firearms/new"
-            className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            + Add Firearm
-          </Link>
+          {read_only ? (
+            <span title="Subscription expired — read-only mode"
+              className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg opacity-50 cursor-not-allowed">
+              + Add Firearm
+            </span>
+          ) : (
+            <Link
+              to="/firearms/new"
+              className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              + Add Firearm
+            </Link>
+          )}
         </div>
       </div>
 
