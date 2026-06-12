@@ -137,7 +137,7 @@ function CompanyStep({ onNext }) {
       <p className="text-sm text-slate-400">
         These details appear on the login screen, the sidebar, and every printed permit.
       </p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="Company Name" required>
           <input className={inputCls} value={form.company_name} onChange={(e) => set('company_name', e.target.value)} />
         </Field>
@@ -150,7 +150,7 @@ function CompanyStep({ onNext }) {
         <Field label="Contact Email">
           <input type="email" className={inputCls} value={form.support_email} onChange={(e) => set('support_email', e.target.value)} />
         </Field>
-        <div className="col-span-2">
+        <div className="md:col-span-2">
           <Field label="Company Address">
             <input className={inputCls} value={form.company_address} onChange={(e) => set('company_address', e.target.value)} />
           </Field>
@@ -211,7 +211,7 @@ function FirearmsStep({ onNext, onBack }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-slate-400">Add the firearms in your inventory. You can add more later — this step is optional.</p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="Serial Number" required>
           <input className={inputCls} value={form.serial_number} onChange={(e) => set('serial_number', e.target.value)} />
         </Field>
@@ -271,7 +271,7 @@ function GuardsStep({ onNext, onBack }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-slate-400">Add your security officers. You can add more later — this step is optional.</p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="First Name" required>
           <input className={inputCls} value={form.first_name} onChange={(e) => set('first_name', e.target.value)} />
         </Field>
@@ -332,7 +332,7 @@ function AdminsStep({ onNext, onBack }) {
       <p className="text-sm text-slate-400">
         Add the people who will operate BallistiCore. You're already signed in as <span className="text-slate-200 font-medium">admin</span> — add any colleagues here. Optional.
       </p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Field label="Username" required>
           <input className={inputCls} value={form.username} onChange={(e) => set('username', e.target.value)} />
         </Field>

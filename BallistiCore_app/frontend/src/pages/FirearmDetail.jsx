@@ -126,7 +126,7 @@ export default function FirearmDetail() {
 
         {/* Identity fields — editable on create, read-only on edit */}
         {isNew ? (
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {IDENTITY_FIELDS.map((field) => (
               <div key={field.name}>
                 <label className="block text-xs font-medium text-slate-400 mb-1">{field.label}</label>
@@ -182,9 +182,9 @@ export default function FirearmDetail() {
         </div>
 
         {/* Editable fields */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {EDITABLE_FIELDS.map((field) => (
-            <div key={field.name} className={field.wide ? 'col-span-2' : ''}>
+            <div key={field.name} className={field.wide ? 'md:col-span-2' : ''}>
               <label className="block text-xs font-medium text-slate-400 mb-1">{field.label}</label>
               <input
                 type="text"

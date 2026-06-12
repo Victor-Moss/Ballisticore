@@ -165,7 +165,7 @@ export default function IssueFirearm() {
         {/* Period */}
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Period</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">From Time</label>
               <input type="time" name="period_from_time" value={form.period_from_time} onChange={handleChange}
@@ -182,7 +182,7 @@ export default function IssueFirearm() {
         {/* Issuance details */}
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Issuance Details</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Rounds Issued</label>
               <input type="number" min="0" name="rounds_issued" value={form.rounds_issued} onChange={handleChange}
@@ -268,7 +268,7 @@ export default function IssueFirearm() {
                       </button>
                     ) : (
                       <div className="space-y-2">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           <input type="text" inputMode="numeric" value={reset.otp}
                             onChange={(e) => setReset((r) => ({ ...r, otp: e.target.value }))}
                             placeholder="6-digit code"

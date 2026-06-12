@@ -234,7 +234,7 @@ export default function GuardDetail() {
         {isNew ? (
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Name</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { name: 'first_name', label: 'First Name', required: true },
                 { name: 'last_name',  label: 'Last Name',  required: true },
@@ -263,7 +263,7 @@ export default function GuardDetail() {
               The guard uses these to electronically sign for their firearm. They can reset a forgotten
               password themselves via a WhatsApp code.
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Username</label>
                 <input type="text" name="username" value={form.username} onChange={handleChange} required
@@ -285,7 +285,7 @@ export default function GuardDetail() {
         {/* Profile */}
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Profile</p>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {[
               { name: 'id_number',        label: 'ID Number' },
               { name: 'psira_number',     label: 'PSIRA Number' },
@@ -307,7 +307,7 @@ export default function GuardDetail() {
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">SAPS Competency</p>
           <div className="space-y-3">
             {WEAPON_TYPES.map((wt) => (
-              <div key={wt} className="grid grid-cols-2 gap-4 items-center">
+              <div key={wt} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1 capitalize">{wt} — Competency #</label>
                   <input type="text" name={`saps_comp_${wt}`} value={form[`saps_comp_${wt}`]} onChange={handleChange}

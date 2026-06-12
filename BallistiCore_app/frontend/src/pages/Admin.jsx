@@ -254,7 +254,7 @@ function UsersTab({ currentUser }) {
               {/* Account */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Account</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-slate-400 mb-1">Username{!editingUser?.id && ' *'}</label>
                     {editingUser?.id ? (
@@ -293,7 +293,7 @@ function UsersTab({ currentUser }) {
               {/* Profile */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Profile</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {[
                     { name: 'personnel_number', label: 'Personnel Number' },
                     { name: 'psira_number',      label: 'PSIRA Number' },
@@ -313,7 +313,7 @@ function UsersTab({ currentUser }) {
               {/* Permissions */}
               <div>
                 <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Permissions</p>
-                <div className="grid grid-cols-2 gap-y-2 gap-x-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-6">
                   {PERMISSION_LABELS.map(({ key, label }) => {
                     // System Admin can only be granted by a super admin.
                     const lockSysAdmin = key === 'perm_system_admin' && !superAdmin
@@ -408,7 +408,7 @@ function CompanyTab() {
       {/* Identity */}
       <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5 space-y-4">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Identity</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             { name: 'company_name',  label: 'Company Name',            required: true },
             { name: 'company_reg',   label: 'Company Registration No.' },
@@ -428,7 +428,7 @@ function CompanyTab() {
               />
             </div>
           ))}
-          <div className="col-span-2">
+          <div className="md:col-span-2">
             <label className="block text-xs font-medium text-slate-400 mb-1">Company Address</label>
             <input
               type="text"
@@ -444,7 +444,7 @@ function CompanyTab() {
       {/* System settings */}
       <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5 space-y-4">
         <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">System Settings</p>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1">
               Permit Number Prefix *
@@ -737,7 +737,7 @@ function ImportDataTab() {
             {report.failed > 0 && <span className="text-xs text-red-400">{report.failed} failed</span>}
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {report.sheets.map((s) => (
               <div key={s.sheet} className="bg-slate-800/40 border border-slate-700 rounded-lg px-3 py-2">
                 <p className="text-sm font-medium text-slate-100">{s.sheet}</p>

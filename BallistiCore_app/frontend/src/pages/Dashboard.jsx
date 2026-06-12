@@ -127,7 +127,7 @@ export default function Dashboard() {
       </div>
 
       {/* Quick actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <Link to="/issue"
           className="group bc-card p-5 flex items-center gap-4 hover:border-blue-500/50 hover:bg-[#243044] transition-colors">
           <div className="grid place-items-center h-12 w-12 rounded-xl bg-blue-600 shadow-lg shadow-blue-600/30">

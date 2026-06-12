@@ -81,7 +81,7 @@ export default function ReturnFirearm() {
           {/* Return inspection */}
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Return Inspection</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Rounds Returned</label>
                 <input type="number" min="0" name="rounds_returned" value={form.rounds_returned} onChange={handleChange}

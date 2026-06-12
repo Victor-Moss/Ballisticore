@@ -84,7 +84,7 @@ export default function History() {
       </div>
 
       {/* Filters */}
-      <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-4 mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-4 mb-5 grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
           <label className="block text-xs font-medium text-slate-400 mb-1">Guard</label>
           <select
@@ -137,7 +137,7 @@ export default function History() {
             className="w-full border border-slate-700 rounded-lg px-2 py-1.5 text-sm"
           />
         </div>
-        <div className="col-span-2 md:col-span-4 flex justify-end">
+        <div className="md:col-span-4 flex justify-end">
           <button onClick={clearFilters} className="text-xs text-slate-500 hover:text-slate-200">
             Clear filters
           </button>
