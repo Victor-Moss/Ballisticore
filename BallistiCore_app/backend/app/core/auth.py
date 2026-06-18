@@ -81,9 +81,9 @@ def require_permission(*perm_keys: str):
 
 
 def require_change_passwords(current_user: User = Depends(get_current_user)) -> User:
-    """Operator must be an admin or hold the change-passwords permission to
+    """Operator must be a super admin or hold the change-passwords permission to
     manage guard sign-in accounts."""
-    if not (current_user.is_admin or current_user.perm_change_passwords):
+    if not (is_super_admin(current_user) or current_user.perm_change_passwords):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You do not have permission to manage guard sign-in accounts",

@@ -6,7 +6,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.auth import require_active_user
+from app.core.auth import require_active_user, require_permission
 from app.services import reports as svc
 
 router = APIRouter(
@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 
-@router.get("/register")
+@router.get("/register", dependencies=[Depends(require_permission("perm_access_database"))])
 def export_register(db: Session = Depends(get_db)):
     """Download current register as Excel."""
     data = svc.generate_register_excel(db)
@@ -29,7 +29,7 @@ def export_register(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/history")
+@router.get("/history", dependencies=[Depends(require_permission("perm_view_register_history"))])
 def export_history(
     from_date: Optional[date] = None,
     to_date: Optional[date] = None,
@@ -48,9 +48,12 @@ def export_history(
     )
 
 
-@router.get("/guard/{guard_id}")
+@router.get("/guard/{guard_id}", dependencies=[Depends(require_permission("perm_view_register_history"))])
 def export_guard_activity(guard_id: str, db: Session = Depends(get_db)):
-    """Download a single guard's full activity history as Excel."""
+    """Download a single guard's full activity history as Excel.
+
+    Gated by View History — this is a per-guard slice of the same history data.
+    """
     try:
         data = svc.generate_guard_activity_excel(db, guard_id)
     except ValueError as e:

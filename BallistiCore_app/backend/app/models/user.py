@@ -35,10 +35,3 @@ class User(Base):
     perm_add_user: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     perm_modify_user: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     perm_change_passwords: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    perm_clear_logs: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-
-    # Weapon-category permissions
-    perm_carbine: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    perm_handgun: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    perm_rifle: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    perm_shotgun: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

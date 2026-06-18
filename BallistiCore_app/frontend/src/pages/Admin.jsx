@@ -19,10 +19,10 @@ const BLANK_USER = {
   perm_new_permits: false, perm_return_permits: false, perm_manage_weapons: false,
   perm_manage_staff: false, perm_access_database: false, perm_send_whatsapp: false,
   perm_view_register_history: false, perm_system_admin: false, perm_add_user: false,
-  perm_modify_user: false, perm_change_passwords: false, perm_clear_logs: false,
-  perm_carbine: false, perm_handgun: false, perm_rifle: false, perm_shotgun: false,
+  perm_modify_user: false, perm_change_passwords: false,
 }
 
+// Every permission here is enforced on the backend — see PERMISSIONS_MAP.md.
 const PERMISSION_LABELS = [
   { key: 'perm_new_permits',           label: 'Issue Permits' },
   { key: 'perm_return_permits',        label: 'Return Permits' },
@@ -35,14 +35,6 @@ const PERMISSION_LABELS = [
   { key: 'perm_add_user',              label: 'Add Users' },
   { key: 'perm_modify_user',           label: 'Modify Users' },
   { key: 'perm_change_passwords',      label: 'Change Passwords' },
-  { key: 'perm_clear_logs',            label: 'Clear Logs' },
-]
-
-const WEAPON_PERMS = [
-  { key: 'perm_carbine', label: 'Carbine' },
-  { key: 'perm_handgun', label: 'Handgun' },
-  { key: 'perm_rifle',   label: 'Rifle' },
-  { key: 'perm_shotgun', label: 'Shotgun' },
 ]
 
 // ── Company details form defaults ─────────────────────────────────────────────
@@ -122,11 +114,6 @@ function UsersTab({ currentUser }) {
       perm_add_user: u.perm_add_user,
       perm_modify_user: u.perm_modify_user,
       perm_change_passwords: u.perm_change_passwords,
-      perm_clear_logs: u.perm_clear_logs,
-      perm_carbine: u.perm_carbine,
-      perm_handgun: u.perm_handgun,
-      perm_rifle: u.perm_rifle,
-      perm_shotgun: u.perm_shotgun,
     })
     setError('')
     setSuccess('')
@@ -366,19 +353,6 @@ function UsersTab({ currentUser }) {
                       </label>
                     )
                   })}
-                </div>
-              </div>
-
-              {/* Weapon categories */}
-              <div>
-                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Weapon Categories</p>
-                <div className="flex gap-6">
-                  {WEAPON_PERMS.map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-2 text-sm text-slate-200 cursor-pointer">
-                      <input type="checkbox" name={key} checked={form[key]} onChange={handleChange} disabled={fieldsLocked} className="rounded" />
-                      {label}
-                    </label>
-                  ))}
                 </div>
               </div>
 
