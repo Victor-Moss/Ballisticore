@@ -29,7 +29,6 @@ export const ADMIN_SECTION_PERMS = [
   'perm_add_user',
   'perm_modify_user',
   'perm_change_passwords',
-  'perm_clear_logs',
 ]
 
 // True if the user can reach the Admin section at all.

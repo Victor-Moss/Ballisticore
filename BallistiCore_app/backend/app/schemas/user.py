@@ -41,11 +41,6 @@ class UserCreate(BaseModel):
     perm_add_user: bool = False
     perm_modify_user: bool = False
     perm_change_passwords: bool = False
-    perm_clear_logs: bool = False
-    perm_carbine: bool = False
-    perm_handgun: bool = False
-    perm_rifle: bool = False
-    perm_shotgun: bool = False
 
     @field_validator(*_OPTIONAL_STR_FIELDS, mode="before")
     @classmethod
@@ -74,11 +69,6 @@ class UserUpdate(BaseModel):
     perm_add_user: Optional[bool] = None
     perm_modify_user: Optional[bool] = None
     perm_change_passwords: Optional[bool] = None
-    perm_clear_logs: Optional[bool] = None
-    perm_carbine: Optional[bool] = None
-    perm_handgun: Optional[bool] = None
-    perm_rifle: Optional[bool] = None
-    perm_shotgun: Optional[bool] = None
 
     @field_validator(*_OPTIONAL_STR_FIELDS, mode="before")
     @classmethod
@@ -109,11 +99,6 @@ class UserOut(BaseModel):
     perm_add_user: bool = False
     perm_modify_user: bool = False
     perm_change_passwords: bool = False
-    perm_clear_logs: bool = False
-    perm_carbine: bool = False
-    perm_handgun: bool = False
-    perm_rifle: bool = False
-    perm_shotgun: bool = False
 
     model_config = {"from_attributes": True}
 

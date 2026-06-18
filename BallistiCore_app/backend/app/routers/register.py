@@ -12,12 +12,14 @@ from app.services import guards as guard_svc
 router = APIRouter(prefix="/api/register", tags=["Register"], dependencies=[Depends(require_active_user)])
 
 
-@router.get("/", response_model=list[RegisterEntryOut])
+@router.get("/", response_model=list[RegisterEntryOut],
+            dependencies=[Depends(require_permission("perm_access_database"))])
 def current_register(db: Session = Depends(get_db)):
     return svc.get_current_register(db)
 
 
-@router.get("/guard/{guard_id}", response_model=list[RegisterEntryOut])
+@router.get("/guard/{guard_id}", response_model=list[RegisterEntryOut],
+            dependencies=[Depends(require_permission("perm_access_database"))])
 def register_for_guard(guard_id: str, db: Session = Depends(get_db)):
     if not guard_svc.get_by_id(db, guard_id):
         raise HTTPException(status_code=404, detail="Guard not found")
@@ -69,7 +71,8 @@ def return_firearm(
     )
 
 
-@router.get("/history", response_model=list[HistoryEntryOut])
+@router.get("/history", response_model=list[HistoryEntryOut],
+            dependencies=[Depends(require_permission("perm_view_register_history"))])
 def history(
     guard_id: Optional[str] = None,
     firearm_id: Optional[str] = None,
@@ -80,13 +83,15 @@ def history(
     return svc.get_history(db, guard_id, firearm_id, from_date, to_date)
 
 
-@router.get("/history/guard/{guard_id}", response_model=list[HistoryEntryOut])
+@router.get("/history/guard/{guard_id}", response_model=list[HistoryEntryOut],
+            dependencies=[Depends(require_permission("perm_view_register_history"))])
 def history_for_guard(guard_id: str, db: Session = Depends(get_db)):
     if not guard_svc.get_by_id(db, guard_id):
         raise HTTPException(status_code=404, detail="Guard not found")
     return svc.get_history(db, guard_id=guard_id)
 
 
-@router.get("/history/firearm/{firearm_id}", response_model=list[HistoryEntryOut])
+@router.get("/history/firearm/{firearm_id}", response_model=list[HistoryEntryOut],
+            dependencies=[Depends(require_permission("perm_view_register_history"))])
 def history_for_firearm(firearm_id: str, db: Session = Depends(get_db)):
     return svc.get_history(db, firearm_id=firearm_id)
