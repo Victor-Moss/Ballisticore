@@ -5,6 +5,7 @@ import {
   getAmmunitionTypes, createAmmunitionType, updateAmmunitionType, deleteAmmunitionType,
 } from '../api/ammunitionTypes'
 import { downloadTemplate, uploadImport, downloadErrorWorkbook } from '../api/imports'
+import { downloadFullExport } from '../api/exports'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
 import { useLicense } from '../context/LicenseContext'
@@ -912,6 +913,52 @@ function ImportDataTab() {
   )
 }
 
+// ── Export Data tab ───────────────────────────────────────────────────────────
+function ExportDataTab() {
+  const [exporting, setExporting] = useState(false)
+  const [error, setError]   = useState('')
+  const [done, setDone]     = useState(false)
+
+  const handleExport = async () => {
+    setExporting(true); setError(''); setDone(false)
+    try {
+      await downloadFullExport()
+      setDone(true)
+    } catch {
+      setError('Could not generate the export. Please try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5">
+        <p className="text-sm font-semibold text-slate-100 mb-1">Export all data</p>
+        <p className="text-xs text-slate-400 mb-3">
+          Generates a complete export of every entity in the system in three formats at once,
+          packaged into a single ZIP download:
+        </p>
+        <ul className="text-xs text-slate-400 list-disc pl-5 space-y-1 mb-3">
+          <li><span className="text-slate-200">Excel workbook</span> — one sheet per entity (Guards, Users, Firearms, Locations, Permits, Register and more). The Guards sheet matches the import template, so it can be re-imported.</li>
+          <li><span className="text-slate-200">CSV bundle</span> — one CSV per entity, zipped together.</li>
+          <li><span className="text-slate-200">PDF compliance summary</span> — guard counts, weapon-permission breakdown, expired competencies, PSIRA coverage and user-account summary.</li>
+        </ul>
+        <p className="text-xs text-amber-400/90 mb-3">
+          This export contains sensitive data (ID numbers, SAPS competency numbers, PSIRA numbers).
+          Each export is logged for audit. Store and share the file securely.
+        </p>
+        <button onClick={handleExport} disabled={exporting}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50 transition-colors">
+          {exporting ? 'Generating…' : '⬇ Export All Data'}
+        </button>
+        {error && <p className="mt-3 text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
+        {done && <p className="mt-3 text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">Export downloaded.</p>}
+      </div>
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function Admin() {
   const { user: currentUser } = useAuth()
@@ -936,12 +983,14 @@ export default function Admin() {
         <Tab label="Users"            active={tab === 'users'}   onClick={() => setTab('users')} />
         {superAdmin && <Tab label="Ammunition Types" active={tab === 'ammo'}    onClick={() => setTab('ammo')} />}
         {superAdmin && <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />}
+        {superAdmin && <Tab label="Export Data"      active={tab === 'export'}  onClick={() => setTab('export')} />}
         {superAdmin && <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />}
       </div>
 
       {tab === 'users'             && <UsersTab currentUser={currentUser} />}
       {tab === 'ammo'    && superAdmin && <AmmunitionTypesTab />}
       {tab === 'import'  && superAdmin && <ImportDataTab />}
+      {tab === 'export'  && superAdmin && <ExportDataTab />}
       {tab === 'company' && superAdmin && <CompanyTab />}
     </div>
   )
