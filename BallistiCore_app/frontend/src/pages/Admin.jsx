@@ -4,7 +4,7 @@ import { getBrandingFull, updateBranding } from '../api/branding'
 import {
   getAmmunitionTypes, createAmmunitionType, updateAmmunitionType, deleteAmmunitionType,
 } from '../api/ammunitionTypes'
-import { downloadTemplate, uploadImport } from '../api/imports'
+import { downloadTemplate, uploadImport, downloadErrorWorkbook } from '../api/imports'
 import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
 import { useLicense } from '../context/LicenseContext'
@@ -226,7 +226,7 @@ function UsersTab({ currentUser }) {
       )}
 
       {/* Desktop / tablet: table (md and up) */}
-      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-800/40 border-b border-slate-700">
             <tr>
@@ -643,7 +643,7 @@ function AmmunitionTypesTab() {
       )}
 
       {/* Desktop / tablet: table (md and up) */}
-      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-800/40 border-b border-slate-700">
             <tr>
@@ -771,6 +771,8 @@ function ImportDataTab() {
           <span className="text-slate-200">Firearms</span> and <span className="text-slate-200">Users</span> —
           with labelled columns and an example row in each. Required columns are marked with <span className="font-mono">*</span>.
           The grey <span className="font-mono">e.g.…</span> example rows are ignored on import — replace or delete them.
+          The Guards sheet includes a SAPS Competency Number + Expiry pair per weapon type — a valid,
+          complete pair auto-ticks that weapon's permission. Hover a header for its format hint.
         </p>
         <button onClick={handleDownload} disabled={downloading}
           className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-2 rounded-lg disabled:opacity-50 transition-colors">
@@ -799,9 +801,12 @@ function ImportDataTab() {
       {/* Results */}
       {report && (
         <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-5 space-y-4">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <p className="text-sm text-slate-100 font-semibold">Import complete</p>
             <span className="text-xs text-green-400">{report.imported} imported</span>
+            {report.expired_review?.length > 0 && (
+              <span className="text-xs text-amber-400">{report.expired_review.length} for expired-competency review</span>
+            )}
             {report.failed > 0 && <span className="text-xs text-red-400">{report.failed} failed</span>}
           </div>
 
@@ -817,11 +822,51 @@ function ImportDataTab() {
             ))}
           </div>
 
+          {report.expired_review?.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-amber-400 uppercase tracking-wide mb-2">Review expired competencies</p>
+              <p className="text-xs text-slate-400 mb-2">
+                These guards imported and their weapon permissions were ticked, but the competency
+                expiry date has already passed. Confirm renewals are in progress.
+              </p>
+              <div className="border border-amber-500/30 rounded-lg overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-amber-500/10 border-b border-amber-500/30">
+                    <tr>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-amber-300 uppercase">Guard</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-amber-300 uppercase">Weapon</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-amber-300 uppercase">Competency No.</th>
+                      <th className="text-left px-3 py-2 text-xs font-semibold text-amber-300 uppercase">Expired</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-500/20">
+                    {report.expired_review.map((e, i) => (
+                      <tr key={`${e.row}-${e.weapon}-${i}`} className="hover:bg-amber-500/5">
+                        <td className="px-3 py-2 text-slate-200">{e.name}</td>
+                        <td className="px-3 py-2 text-slate-300">{e.weapon}</td>
+                        <td className="px-3 py-2 font-mono text-slate-400">{e.competency_number}</td>
+                        <td className="px-3 py-2 text-amber-300">{e.expiry_date}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {report.failed > 0 && (
             <div>
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Rows that failed</p>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">Rows that failed</p>
+                {report.error_workbook && (
+                  <button onClick={() => downloadErrorWorkbook(report.error_workbook)}
+                    className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition-colors">
+                    ⬇ Download error workbook
+                  </button>
+                )}
+              </div>
               {/* Desktop / tablet: table (md and up) */}
-              <div className="hidden md:block border border-slate-700 rounded-lg overflow-hidden">
+              <div className="hidden md:block border border-slate-700 rounded-lg overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-800/40 border-b border-slate-700">
                     <tr>
@@ -855,7 +900,9 @@ function ImportDataTab() {
                 )))}
               </div>
               <p className="mt-2 text-xs text-slate-500">
-                Fix these rows in your file and upload again — already-imported rows will be reported as duplicates and skipped.
+                Download the error workbook above — it contains just the failed rows with a reason
+                column. Fix those rows and re-import that file; already-imported rows will be reported
+                as duplicates and skipped.
               </p>
             </div>
           )}
