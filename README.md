@@ -21,15 +21,33 @@ Admin → Users.
 
 ## Features
 
-### New in 1.4.0
-- **Granular permissions** — all 12 user permissions are now enforced. Each
-  operator sees only the menu items their permissions grant; navigating directly
-  to a blocked page shows an Access Denied screen. The same rules are enforced on
-  the server, not just hidden in the UI, so they can't be bypassed. As a safeguard,
-  only a System Admin can create or grant another System Admin — operators with
-  "Add Users" are limited to standard operator-level accounts.
+### New in 1.5.0 *(in development — the latest installer is still 1.4.0)*
+- **SAPS competency & PSIRA in Excel import** — the Guards import template now
+  captures a SAPS Competency Number + Expiry Date for each weapon type (Shotgun,
+  Carbine, Rifle, Handgun) alongside the PSIRA number. A valid, complete pair
+  auto-ticks that weapon's permission on the guard. An expired-but-valid
+  competency still imports and is surfaced in a **Review Expired Competencies**
+  list after the run (and flagged on the guard's profile), while malformed or
+  half-filled rows are excluded into a downloadable **error workbook** you can
+  fix and re-import — without redoing the whole file.
+- **Export All Data** — one admin-only action (Admin → Export Data) produces the
+  full dataset in three formats at once, bundled into a single ZIP: an **Excel
+  workbook** (one sheet per entity, with the Guards sheet matching the import
+  template so it round-trips), a **CSV bundle**, and a **PDF compliance summary**
+  (guard counts, weapon-permission breakdown, expired competencies, PSIRA
+  coverage and user-account summary). Each export is logged for audit.
+- **Fully-enforced permissions** — every checkbox on the Add/Modify User screen
+  now controls access on the server, not just in the UI; viewing the register and
+  history are gated server-side too. Dead checkboxes (Clear Logs and the four
+  Weapon Category boxes) that controlled nothing were removed. See
+  [PERMISSIONS_MAP.md](PERMISSIONS_MAP.md) for the full checkbox-to-enforcement map.
 
 ### Also included
+- **Granular permissions** *(1.4.0)* — each operator sees only the menu items
+  their permissions grant; navigating directly to a blocked page shows an Access
+  Denied screen, and the same rules are enforced on the server, not just hidden
+  in the UI. Only a System Admin can create or grant another System Admin —
+  operators with "Add Users" are limited to standard operator-level accounts.
 - **Light / dark theme** *(1.3.0)* — a theme toggle in the top navigation bar,
   remembering your choice. Dark is the default; the light theme uses clean whites
   and light greys with dark text, keeping the same steel-blue accent.
@@ -100,6 +118,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
+| 1.5.0 *(in development)* | SAPS competency & PSIRA in Excel import, full data export (Excel + CSV + PDF), fully-enforced permissions · not yet released |
 | [1.4.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0) | Granular permission enforcement + System Admin escalation guard · installer smoke-tested ✅ |
 | [1.3.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0) | Light / dark theme toggle · installer smoke-tested ✅ |
 | [1.2.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.2.0) | Dashboard — key stats + recent-activity timeline · installer smoke-tested ✅ |
