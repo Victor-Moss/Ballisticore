@@ -35,7 +35,10 @@ Admin → Users.
   workbook** (one sheet per entity, with the Guards sheet matching the import
   template so it round-trips), a **CSV bundle**, and a **PDF compliance summary**
   (guard counts, weapon-permission breakdown, expired competencies, PSIRA
-  coverage and user-account summary). Each export is logged for audit.
+  coverage and user-account summary). For readability, every ID/reference field
+  gets a **human-readable companion column** next to it (e.g. guard name, firearm
+  serial, operator name) while the raw IDs are kept intact for re-import. Each
+  export is logged for audit.
 - **Fully-enforced permissions** — every checkbox on the Add/Modify User screen
   now controls access on the server, not just in the UI; viewing the register and
   history are gated server-side too. Dead checkboxes (Clear Logs and the four
