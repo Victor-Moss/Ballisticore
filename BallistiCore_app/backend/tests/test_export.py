@@ -1,4 +1,5 @@
 """Tests for the full data export (Excel + CSV bundle + PDF summary)."""
+import uuid
 import zipfile
 from datetime import date, datetime, timedelta
 from io import BytesIO
@@ -9,6 +10,8 @@ from app.services import exports as svc
 from app.services.imports import SHEETS
 from app.models.guard import Guard
 from app.models.user import User
+from app.models.firearm import Firearm
+from app.models.register_history import RegisterHistory
 
 
 def _seed(db):
@@ -45,6 +48,58 @@ def test_user_export_excludes_password_hash(db):
     datasets = svc.collect_datasets(db)
     users_ds = next(d for d in datasets if d["name"] == "Users")
     assert "hashed_password" not in users_ds["headers"]
+
+
+def _ds(datasets, name):
+    return next(d for d in datasets if d["name"] == name)
+
+
+def test_fk_companion_columns_in_register_history(db):
+    guard = Guard(id=str(uuid.uuid4()), first_name="Carl", last_name="Carrier")
+    fa = Firearm(id=str(uuid.uuid4()), serial_number="GLK-100234", make="Glock",
+                 model="17", type="handgun")
+    user = User(id=str(uuid.uuid4()), username="operator1",
+                hashed_password="x", is_active=True)
+    db.add_all([guard, fa, user])
+    db.commit()
+    db.add(RegisterHistory(id=str(uuid.uuid4()), guard_id=guard.id, firearm_id=fa.id,
+                           action="ISSUED", actioned_by=user.id))
+    db.commit()
+
+    ds = _ds(svc.collect_datasets(db), "Register History")
+    headers, row = ds["headers"], ds["rows"][0]
+    rowmap = dict(zip(headers, row))
+
+    # Companion column sits immediately after its FK column, ID kept intact.
+    assert headers[headers.index("guard_id") + 1] == "guard_name"
+    assert headers[headers.index("firearm_id") + 1] == "firearm_description"
+    assert headers[headers.index("actioned_by") + 1] == "actioned_by_name"
+    assert rowmap["guard_id"] == guard.id            # raw UUID preserved
+    assert rowmap["guard_name"] == "Carl Carrier"
+    assert rowmap["firearm_description"] == "GLK-100234 (Glock 17, handgun)"
+    assert rowmap["actioned_by_name"] == "operator1"
+
+
+def test_no_fk_entities_have_no_companion_columns(db):
+    # Entities with no foreign keys must export exactly their own columns —
+    # no extra companion columns added.
+    from app.models.location import Location
+    from app.models.ammunition_type import AmmunitionType
+    _seed(db)
+    datasets = svc.collect_datasets(db)
+    for name, model in (("Users", User), ("Locations", Location), ("Ammunition Types", AmmunitionType)):
+        expected = [c.name for c in model.__table__.columns if c.name not in svc._SECRET_COLUMNS]
+        assert _ds(datasets, name)["headers"] == expected
+
+
+def test_guards_sheet_unchanged_no_fk_uuids(db):
+    # Guards columns come from the import template, which omits location_id, so
+    # there are no opaque FK UUIDs to humanise — the sheet stays as-is.
+    _seed(db)
+    headers = _ds(svc.collect_datasets(db), "Guards")["headers"]
+    import_headers = [h for (h, *_ ) in next(s for s in SHEETS if s["name"] == "Guards")["columns"]]
+    assert headers == import_headers
+    assert not any(h.endswith("_id") for h in headers)
 
 
 def test_csv_zip_has_one_file_per_entity(db):

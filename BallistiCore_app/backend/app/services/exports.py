@@ -88,6 +88,43 @@ def _csv_filename(sheet_name: str) -> str:
     return sheet_name.lower().replace(" ", "_") + ".csv"
 
 
+# ── Human-readable companion columns for foreign keys ─────────────────────────
+# Raw FK columns export as opaque UUIDs (fine for round-trip), so each FK column
+# gets a readable companion column immediately to its right. To avoid a per-row DB
+# lookup, every related table's id→label mapping is fetched once per export run
+# (see _build_fk_maps) and looked up in memory while building each sheet/CSV.
+
+def _firearm_label(f) -> str:
+    """Best human identifier for a firearm: serial + make/model + type."""
+    descr = " ".join(p for p in (f.make, f.model) if p)
+    extra = ", ".join(p for p in (descr, f.type) if p)
+    return f"{f.serial_number} ({extra})" if extra else (f.serial_number or "")
+
+
+def _build_fk_maps(db: Session) -> dict:
+    """id → readable-label maps for every table referenced by a foreign key,
+    fetched once per export. Keyed by the referenced table name."""
+    return {
+        "guards": {g.id: f"{g.first_name} {g.last_name}".strip() for g in db.query(Guard).all()},
+        "users": {u.id: u.username for u in db.query(User).all()},
+        "firearms": {f.id: _firearm_label(f) for f in db.query(Firearm).all()},
+        "ammunition_types": {a.id: a.name for a in db.query(AmmunitionType).all()},
+        "permits": {p.id: p.permit_number for p in db.query(Permit).all()},
+        "locations": {l.id: l.name for l in db.query(Location).all()},
+    }
+
+# What the companion column is named, by referenced table.
+_COMPANION_SUFFIX = {
+    "guards": "name", "users": "name", "locations": "name",
+    "ammunition_types": "name", "permits": "number", "firearms": "description",
+}
+
+
+def _companion_header(fk_column: str, target_table: str) -> str:
+    base = fk_column[:-3] if fk_column.endswith("_id") else fk_column
+    return f"{base}_{_COMPANION_SUFFIX[target_table]}"
+
+
 def _guards_dataset(db: Session) -> dict:
     """Guards columns derived from the import template (header, field) pairs, so
     this export round-trips back through the import."""
@@ -101,18 +138,45 @@ def _guards_dataset(db: Session) -> dict:
     return {"name": "Guards", "filename": _csv_filename("Guards"), "headers": headers, "rows": rows}
 
 
-def _table_dataset(db: Session, name: str, model) -> dict:
-    cols = [c.name for c in model.__table__.columns if c.name not in _SECRET_COLUMNS]
-    rows = [[_cell(getattr(obj, c)) for c in cols] for obj in db.query(model).all()]
-    return {"name": name, "filename": _csv_filename(name), "headers": cols, "rows": rows}
+def _table_dataset(db: Session, name: str, model, fk_maps: dict) -> dict:
+    """Dump a table's columns; for each foreign key, add a readable companion
+    column right after the raw ID column (resolved against the in-memory maps).
+    The original ID column is always kept intact for backup/round-trip."""
+    # Plan the output columns: each is ("plain", col_name) or ("fk", col_name, mapping).
+    plan: list[tuple] = []
+    headers: list[str] = []
+    for c in model.__table__.columns:
+        if c.name in _SECRET_COLUMNS:
+            continue
+        plan.append(("plain", c.name))
+        headers.append(c.name)
+        if c.foreign_keys:
+            target = next(iter(c.foreign_keys)).column.table.name
+            mapping = fk_maps.get(target)
+            if mapping is not None:
+                plan.append(("fk", c.name, mapping))
+                headers.append(_companion_header(c.name, target))
+
+    rows = []
+    for obj in db.query(model).all():
+        row = []
+        for entry in plan:
+            if entry[0] == "plain":
+                row.append(_cell(getattr(obj, entry[1])))
+            else:  # "fk" companion
+                fk_value = getattr(obj, entry[1])
+                row.append(entry[2].get(fk_value, "") if fk_value else "")
+        rows.append(row)
+    return {"name": name, "filename": _csv_filename(name), "headers": headers, "rows": rows}
 
 
 def collect_datasets(db: Session) -> list[dict]:
     """One {name, filename, headers, rows} per entity — the single source of data
     that both the Excel and CSV exports render."""
+    fk_maps = _build_fk_maps(db)  # fetched once, reused across every sheet
     datasets = [_guards_dataset(db)]
     for name, model in _TABLE_ENTITIES:
-        datasets.append(_table_dataset(db, name, model))
+        datasets.append(_table_dataset(db, name, model, fk_maps))
     return datasets
 
 
