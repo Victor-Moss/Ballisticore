@@ -223,6 +223,19 @@ export default function GuardDetail() {
     }
   }
 
+  // Expired-competency review: a weapon counts as expired only when it has a
+  // complete pair (number + expiry) whose expiry date is in the past — the same
+  // rule the bulk import uses to flag rows for review.
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const isExpired = (wt) => {
+    const number = form[`saps_comp_${wt}`]
+    const expiry = form[`saps_expiry_${wt}`]
+    return Boolean(number && expiry && expiry < todayStr)
+  }
+  const expiredCompetencies = WEAPON_TYPES
+    .filter(isExpired)
+    .map((wt) => ({ weapon: wt, number: form[`saps_comp_${wt}`], expiry: form[`saps_expiry_${wt}`] }))
+
   if (loading) return <div className="p-6 text-sm text-slate-500">Loading…</div>
 
   return (
@@ -235,6 +248,26 @@ export default function GuardDetail() {
           {isNew ? 'Add Guard' : 'Edit Guard'}
         </h2>
       </div>
+
+      {/* Expired-competency review */}
+      {!isNew && expiredCompetencies.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-6">
+          <p className="text-sm font-semibold text-amber-300 mb-1">⚠ Expired SAPS competencies</p>
+          <p className="text-xs text-amber-300/80 mb-3">
+            The competencies below have lapsed. The weapon permission stays in place pending renewal —
+            confirm a renewal is in progress and update the expiry date once it's reissued.
+          </p>
+          <ul className="space-y-1">
+            {expiredCompetencies.map((c) => (
+              <li key={c.weapon} className="flex items-center gap-2 text-xs text-amber-200">
+                <span className="capitalize font-medium w-20">{c.weapon}</span>
+                <span className="font-mono text-amber-100">{c.number}</span>
+                <span className="text-amber-300/70">expired {c.expiry}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-slate-800/60 rounded-xl border border-slate-700 p-6 mb-6 space-y-5">
 
@@ -324,9 +357,16 @@ export default function GuardDetail() {
                     className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">Expiry Date</label>
+                  <label className="flex items-center gap-2 text-xs font-medium text-slate-400 mb-1">
+                    Expiry Date
+                    {isExpired(wt) && (
+                      <span className="text-[10px] uppercase tracking-wide text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded px-1.5 py-0.5">
+                        Expired
+                      </span>
+                    )}
+                  </label>
                   <input type="date" name={`saps_expiry_${wt}`} value={form[`saps_expiry_${wt}`]} onChange={handleChange}
-                    className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${isExpired(wt) ? 'border-amber-500/50' : 'border-slate-700'}`} />
                 </div>
               </div>
             ))}
