@@ -8,7 +8,17 @@ Provides:
 
 Validation is per-row: a bad row is reported with its sheet, row number and
 reason, and never blocks the valid rows in the same upload.
+
+SAPS competency: the Guards sheet carries a Competency Number + Expiry Date pair
+for each weapon type (shotgun, carbine, rifle, handgun). A valid, complete pair
+auto-ticks that weapon's permission on the guard. A pair whose expiry is in the
+past still imports (and still ticks) but is surfaced in a "Review Expired
+Competencies" list. A malformed number or a half-filled pair fails the row, which
+is then excluded from the import and written to a downloadable error workbook.
 """
+import base64
+import re
+from datetime import date, datetime
 from io import BytesIO
 
 from openpyxl import Workbook, load_workbook
@@ -28,6 +38,19 @@ from app.services import users as user_svc
 # Rows whose first cell starts with this are treated as format examples and skipped.
 EXAMPLE_PREFIX = "e.g."
 
+# Weapon types that carry a SAPS competency pair, in the order they appear in the
+# Guards sheet. Each maps to model fields saps_comp_<w> / saps_expiry_<w> /
+# permitted_<w>.
+WEAPON_TYPES = ["shotgun", "carbine", "rifle", "handgun"]
+
+# A competency number is a single letter prefix followed by exactly seven digits
+# (e.g. C7021766). Case-insensitive on input; normalised to uppercase on store.
+_COMP_RE = re.compile(r"^[A-Za-z]\d{7}$")
+
+# Date formats accepted when an expiry cell arrives as text rather than a real
+# Excel date. Real date cells come back as datetime objects and skip this.
+_DATE_FORMATS = ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d", "%m/%d/%Y")
+
 _HEADER_FILL = PatternFill("solid", fgColor="1D4ED8")
 _HEADER_FONT = Font(bold=True, color="FFFFFF")
 _EXAMPLE_FONT = Font(italic=True, color="64748B")
@@ -46,8 +69,35 @@ def _truthy(v: str) -> bool:
     return _cell_str(v).lower() in {"yes", "y", "true", "1", "x", "admin"}
 
 
+class _RowInvalid(ValueError):
+    """Raised when a date cell can't be parsed; message is user-facing."""
+
+
+def _parse_date(v):
+    """Parse an Excel cell into a date, or None for blanks. Raise _RowInvalid
+    on a non-blank value that isn't a recognisable date."""
+    if v is None:
+        return None
+    if isinstance(v, datetime):
+        return v.date()
+    if isinstance(v, date):
+        return v
+    s = str(v).strip()
+    if not s:
+        return None
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    raise _RowInvalid("not a valid date")
+
+
 # ── Creators: validate one row's values and insert. Raise on any problem. ─────
 def _create_guard(db: Session, v: dict):
+    # SAPS competency fields and permitted_* flags are pre-validated and
+    # normalised by _validate_guard_competencies before we get here: comp numbers
+    # are uppercased str|None, expiry values are date|None, permitted_* are bools.
     data = GuardCreate(
         first_name=v["first_name"], last_name=v["last_name"],
         id_number=v.get("id_number") or None,
@@ -56,6 +106,18 @@ def _create_guard(db: Session, v: dict):
         email=v.get("email") or None,
         physical_address=v.get("physical_address") or None,
         personnel_number=v.get("personnel_number") or None,
+        saps_comp_shotgun=v.get("saps_comp_shotgun"),
+        saps_expiry_shotgun=v.get("saps_expiry_shotgun"),
+        saps_comp_carbine=v.get("saps_comp_carbine"),
+        saps_expiry_carbine=v.get("saps_expiry_carbine"),
+        saps_comp_rifle=v.get("saps_comp_rifle"),
+        saps_expiry_rifle=v.get("saps_expiry_rifle"),
+        saps_comp_handgun=v.get("saps_comp_handgun"),
+        saps_expiry_handgun=v.get("saps_expiry_handgun"),
+        permitted_shotgun=bool(v.get("permitted_shotgun")),
+        permitted_carbine=bool(v.get("permitted_carbine")),
+        permitted_rifle=bool(v.get("permitted_rifle")),
+        permitted_handgun=bool(v.get("permitted_handgun")),
     )
     guard_svc.create(db, data)
 
@@ -91,21 +153,100 @@ def _create_user(db: Session, v: dict):
     )
 
 
+# ── SAPS competency validation (Guards sheet) ─────────────────────────────────
+_COMP_COMMENT = ("Letter + 7 digits, e.g. C7021766. Leave blank (with the Expiry) "
+                 "if not authorised for this weapon.")
+_DATE_COMMENT = ("Expiry date, e.g. 2026-12-31. A past date still imports but is "
+                 "flagged for review. Leave blank (with the Number) if N/A.")
+
+
+def _validate_guard_competencies(values: dict, raw: dict) -> tuple[list[str], list[dict]]:
+    """Validate the four SAPS competency pairs on a Guards row.
+
+    Mutates `values` in place: normalises each comp number to uppercase str|None,
+    replaces each expiry with a parsed date|None, and sets permitted_<weapon> True
+    for every valid, complete pair.
+
+    `raw` holds the original (unstringified) cell values so expiry dates keep their
+    native type. Returns (errors, expired) where:
+      - errors  : human-readable reasons this row is invalid (empty == row is OK)
+      - expired : complete & valid pairs whose expiry is in the past — these do NOT
+                  make the row invalid; they're surfaced for follow-up review.
+    """
+    errors: list[str] = []
+    expired: list[dict] = []
+    today = date.today()
+
+    for w in WEAPON_TYPES:
+        label = w.capitalize()
+        comp = (values.get(f"saps_comp_{w}") or "").strip().upper()
+
+        exp_date = None
+        date_invalid = False
+        try:
+            exp_date = _parse_date(raw.get(f"saps_expiry_{w}"))
+        except _RowInvalid:
+            errors.append(f"{label} Competency Expiry: invalid date")
+            date_invalid = True
+
+        has_comp = bool(comp)
+        has_exp = exp_date is not None
+
+        # Store the normalised values back (used by the creator on success).
+        values[f"saps_comp_{w}"] = comp or None
+        values[f"saps_expiry_{w}"] = exp_date
+
+        # Neither side filled (and no bad date) -> not authorised for this weapon.
+        if not has_comp and not has_exp and not date_invalid:
+            continue
+
+        if has_comp and not _COMP_RE.match(comp):
+            errors.append(f"{label} Competency Number: invalid format")
+        if has_comp and not has_exp and not date_invalid:
+            errors.append(f"{label}: Competency Number present without Expiry Date")
+        if has_exp and not has_comp:
+            errors.append(f"{label}: Expiry Date present without Competency Number")
+
+        # Auto-tick only a genuinely complete, well-formed pair.
+        if has_comp and _COMP_RE.match(comp) and has_exp:
+            values[f"permitted_{w}"] = True
+            if exp_date < today:
+                expired.append({
+                    "weapon": label,
+                    "competency_number": comp,
+                    "expiry_date": exp_date.isoformat(),
+                })
+
+    return errors, expired
+
+
 # ── Sheet definitions ─────────────────────────────────────────────────────────
 # Each column: (header, field, required, example, comment)
 SHEETS = [
     {
         "name": "Guards",
         "creator": _create_guard,
+        "validator": _validate_guard_competencies,
         "columns": [
             ("First Name *",       "first_name",       True,  "e.g. John",                None),
             ("Last Name *",        "last_name",        True,  "Smith",                    None),
             ("ID Number",          "id_number",        False, "8001015009087",            None),
-            ("PSIRA Number",       "psira_number",     False, "PS1234567",                None),
+            ("PSIRA Number",       "psira_number",     False, "PS1234567",                "Any value (free text). Leave blank if unknown."),
             ("Cell Phone",         "cell_phone",       False, "0821234567",               None),
             ("Email",              "email",            False, "john.smith@example.com",   None),
             ("Physical Address",   "physical_address", False, "12 Main Rd, Springs",      None),
             ("Personnel Number",   "personnel_number", False, "EMP-001",                  None),
+            # SAPS competency: a number + expiry pair per weapon type. Leave both
+            # blank if the guard isn't authorised for that weapon. A complete,
+            # valid pair auto-ticks that weapon's permission on import.
+            ("Shotgun Competency Number", "saps_comp_shotgun",   False, "C7021766",   _COMP_COMMENT),
+            ("Shotgun Competency Expiry", "saps_expiry_shotgun", False, "2026-12-31", _DATE_COMMENT),
+            ("Carbine Competency Number", "saps_comp_carbine",   False, "D1234567",   _COMP_COMMENT),
+            ("Carbine Competency Expiry", "saps_expiry_carbine", False, "2026-12-31", _DATE_COMMENT),
+            ("Rifle Competency Number",   "saps_comp_rifle",     False, "E2345678",   _COMP_COMMENT),
+            ("Rifle Competency Expiry",   "saps_expiry_rifle",   False, "2026-12-31", _DATE_COMMENT),
+            ("Handgun Competency Number", "saps_comp_handgun",   False, "F3456789",   _COMP_COMMENT),
+            ("Handgun Competency Expiry", "saps_expiry_handgun", False, "2026-12-31", _DATE_COMMENT),
         ],
     },
     {
@@ -177,6 +318,42 @@ def _friendly_error(exc: Exception) -> str:
     return str(exc) or exc.__class__.__name__
 
 
+def _row_cells(row, header_to_field, cols) -> list:
+    """Original cell values for one row, in the sheet's template column order.
+
+    Used to rebuild a failed row in the error workbook so the user can fix just
+    that cell and re-import. Keeps native types (dates stay dates)."""
+    out = []
+    for _h, field, *_ in cols:
+        idx = header_to_field.get(field)
+        out.append(row[idx] if idx is not None and idx < len(row) else None)
+    return out
+
+
+def _build_error_workbook(error_sheets: dict) -> bytes:
+    """Build an .xlsx of every failed row, mirroring the template's columns plus
+    a trailing 'Error Details' column explaining why each row failed."""
+    wb = Workbook()
+    wb.remove(wb.active)
+    for name, info in error_sheets.items():
+        ws = wb.create_sheet(title=name)
+        headers = [h for (h, *_ ) in info["columns"]] + ["Error Details"]
+        for c, header in enumerate(headers, start=1):
+            cell = ws.cell(row=1, column=c, value=header)
+            cell.fill = _HEADER_FILL
+            cell.font = _HEADER_FONT
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+            ws.column_dimensions[get_column_letter(c)].width = max(16, len(header) + 4)
+        for r, (cells, message) in enumerate(info["rows"], start=2):
+            for c, val in enumerate(cells, start=1):
+                ws.cell(row=r, column=c, value=val)
+            ws.cell(row=r, column=len(cells) + 1, value=message)
+        ws.freeze_panes = "A2"
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
 def import_workbook(db: Session, data: bytes) -> dict:
     try:
         wb = load_workbook(BytesIO(data), data_only=True, read_only=True)
@@ -185,10 +362,13 @@ def import_workbook(db: Session, data: bytes) -> dict:
 
     results = []
     total_imported = total_failed = 0
+    expired_review: list[dict] = []
+    error_sheets: dict = {}  # sheet name -> {"columns": cols, "rows": [(cells, msg)]}
 
     for sheet in SHEETS:
         name = sheet["name"]
         cols = sheet["columns"]
+        validator = sheet.get("validator")
         imported = 0
         skipped = 0
         errors = []
@@ -209,6 +389,12 @@ def import_workbook(db: Session, data: bytes) -> dict:
                     header_to_field[field] = idx
                     break
 
+        def _record_error(excel_row, row, message):
+            """Add a row to both the JSON report and the error workbook."""
+            errors.append({"row": excel_row, "message": message})
+            error_sheets.setdefault(name, {"columns": cols, "rows": []})
+            error_sheets[name]["rows"].append((_row_cells(row, header_to_field, cols), message))
+
         for excel_row, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             values = {field: _cell_str(row[idx]) if idx < len(row) else ""
                       for field, idx in header_to_field.items()}
@@ -220,14 +406,33 @@ def import_workbook(db: Session, data: bytes) -> dict:
                 continue
             missing = [h for (h, f, req, *_ ) in cols if req and not values.get(f)]
             if missing:
-                errors.append({"row": excel_row, "message": f"Missing required: {', '.join(missing)}"})
+                _record_error(excel_row, row, f"Missing required: {', '.join(missing)}")
                 continue
+
+            # Per-sheet structured validation (SAPS competency pairs on Guards).
+            # The validator normalises `values` and reports field-level errors;
+            # it also returns expired-but-valid pairs to surface after import.
+            row_expired = []
+            if validator:
+                raw = {field: (row[idx] if idx < len(row) else None)
+                       for field, idx in header_to_field.items()}
+                field_errors, row_expired = validator(values, raw)
+                if field_errors:
+                    _record_error(excel_row, row, "; ".join(field_errors))
+                    continue
+
             try:
                 sheet["creator"](db, values)
                 imported += 1
+                for e in row_expired:
+                    expired_review.append({
+                        "sheet": name, "row": excel_row,
+                        "name": f"{values.get('first_name', '')} {values.get('last_name', '')}".strip(),
+                        **e,
+                    })
             except Exception as exc:  # noqa: BLE001 — per-row isolation is intentional
                 db.rollback()
-                errors.append({"row": excel_row, "message": _friendly_error(exc)})
+                _record_error(excel_row, row, _friendly_error(exc))
 
         total_imported += imported
         total_failed += len(errors)
@@ -235,4 +440,18 @@ def import_workbook(db: Session, data: bytes) -> dict:
                         "failed": len(errors), "skipped": skipped, "errors": errors})
 
     wb.close()
-    return {"imported": total_imported, "failed": total_failed, "sheets": results}
+
+    response = {
+        "imported": total_imported,
+        "failed": total_failed,
+        "expired_review": expired_review,
+        "sheets": results,
+        "error_workbook": None,
+    }
+    if error_sheets:
+        wb_bytes = _build_error_workbook(error_sheets)
+        response["error_workbook"] = {
+            "filename": "BallistiCore_Import_Errors.xlsx",
+            "content_base64": base64.b64encode(wb_bytes).decode("ascii"),
+        }
+    return response
