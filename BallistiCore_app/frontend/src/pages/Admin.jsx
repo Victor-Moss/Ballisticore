@@ -919,13 +919,29 @@ function ExportDataTab() {
   const [error, setError]   = useState('')
   const [done, setDone]     = useState(false)
 
+  // Map a failed export to a clear, status-appropriate message. The full error
+  // detail is logged server-side (uvicorn traceback + the ballisticore.export
+  // audit log); we surface the raw client error to the console too for debugging.
+  const exportErrorMessage = (err) => {
+    if (!err.response) {
+      return 'Couldn’t reach the server. Check your connection and that BallistiCore is running, then try again.'
+    }
+    const status = err.response.status
+    if (status === 401) return 'Your session has expired. Please sign in again.'
+    if (status === 403) return 'You don’t have permission to export data — this action is restricted to administrators.'
+    if (status === 404) return 'The export feature isn’t available on this server yet. The backend may need to be restarted/updated.'
+    if (status >= 500) return 'The server hit an error generating the export. The details have been logged — please try again, and contact support if it keeps happening.'
+    return `The export failed (error ${status}). Please try again.`
+  }
+
   const handleExport = async () => {
     setExporting(true); setError(''); setDone(false)
     try {
       await downloadFullExport()
       setDone(true)
-    } catch {
-      setError('Could not generate the export. Please try again.')
+    } catch (err) {
+      console.error('Export failed:', err)
+      setError(exportErrorMessage(err))
     } finally {
       setExporting(false)
     }
