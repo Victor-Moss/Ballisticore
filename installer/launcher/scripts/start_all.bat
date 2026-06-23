@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================================
-rem  BallistiCore — start everything and open the app.
+rem  BallistiCore - start everything and open the app.
 rem  Idempotent: if it's already running, it just opens the browser.
 rem ============================================================================
 setlocal
