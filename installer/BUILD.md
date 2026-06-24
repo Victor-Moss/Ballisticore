@@ -82,8 +82,12 @@ fails fast with instructions if either runtime from Step 1 is missing.
 Open `BallistiCore.iss` in Inno Setup and press **Compile** (F9), or:
 
 ```powershell
-& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" BallistiCore.iss
+& "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe" BallistiCore.iss
 ```
+
+> Inno Setup's install location varies. If the path above doesn't exist, it may
+> be at `C:\Program Files (x86)\Inno Setup 6\ISCC.exe` (system-wide install)
+> instead of `%LOCALAPPDATA%\Programs\Inno Setup 6\` (per-user install).
 
 The result is `installer\dist\BallistiCore-Setup-1.0.0.exe`. Ship that single
 file to the client; see `README.txt` for their setup steps.
