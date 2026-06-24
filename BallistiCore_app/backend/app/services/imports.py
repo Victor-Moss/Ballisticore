@@ -26,9 +26,11 @@ from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.comments import Comment
 from openpyxl.utils import get_column_letter
 from pydantic import ValidationError
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.ammunition_type import AmmunitionType
 from app.schemas.firearm import FirearmCreate, FIREARM_TYPES
 from app.schemas.guard import GuardCreate
 from app.services import firearms as firearm_svc
@@ -105,6 +107,7 @@ def _create_guard(db: Session, v: dict):
         cell_phone=v.get("cell_phone") or None,
         email=v.get("email") or None,
         physical_address=v.get("physical_address") or None,
+        region=v.get("region") or None,
         personnel_number=v.get("personnel_number") or None,
         saps_comp_shotgun=v.get("saps_comp_shotgun"),
         saps_expiry_shotgun=v.get("saps_expiry_shotgun"),
@@ -122,7 +125,29 @@ def _create_guard(db: Session, v: dict):
     guard_svc.create(db, data)
 
 
+def _resolve_ammunition_type(db: Session, name: str | None) -> str | None:
+    """Map an Ammunition Type *name* from the sheet to its id. Blank -> None;
+    an unknown name fails the row (the type must already exist — manage them under
+    Firearms -> Ammunition Types). Matched case-insensitively against active types."""
+    name = (name or "").strip()
+    if not name:
+        return None
+    ammo = (
+        db.query(AmmunitionType)
+        .filter(func.lower(AmmunitionType.name) == name.lower(),
+                AmmunitionType.is_active == True)  # noqa: E712
+        .first()
+    )
+    if not ammo:
+        raise ValueError(
+            f"Ammunition type '{name}' not found — add it under Firearms → Ammunition Types first"
+        )
+    return ammo.id
+
+
 def _create_firearm(db: Session, v: dict):
+    # license_issue_date is pre-parsed to date|None by _validate_firearm before we
+    # get here; ammunition_type arrives as a name and is resolved to its id below.
     ftype = (v.get("type") or "").lower()
     if ftype and ftype not in FIREARM_TYPES:
         raise ValueError(f"Type must be one of: {', '.join(FIREARM_TYPES)}")
@@ -133,7 +158,9 @@ def _create_firearm(db: Session, v: dict):
         model=v.get("model") or None, type=ftype or None,
         calibre=v.get("calibre") or None,
         license_number=v.get("license_number") or None,
+        license_issue_date=v.get("license_issue_date"),
         description=v.get("description") or None,
+        ammunition_type_id=_resolve_ammunition_type(db, v.get("ammunition_type")),
     )
     firearm_svc.create(db, data)
 
@@ -148,6 +175,7 @@ def _create_user(db: Session, v: dict):
         password=v["password"], is_admin=_truthy(v.get("is_admin", "")),
         personnel_number=v.get("personnel_number") or None,
         psira_number=v.get("psira_number") or None,
+        competency=v.get("competency") or None,
         phone_number=v.get("phone_number") or None,
         id_number=v.get("id_number") or None,
     )
@@ -220,6 +248,18 @@ def _validate_guard_competencies(values: dict, raw: dict) -> tuple[list[str], li
     return errors, expired
 
 
+def _validate_firearm(values: dict, raw: dict) -> tuple[list[str], list[dict]]:
+    """Parse the Firearms sheet's Licence Issue Date from its native cell value,
+    storing a date|None back into `values`. Returns (errors, []) — firearms have
+    no expired-review concept, so the second list is always empty."""
+    errors: list[str] = []
+    try:
+        values["license_issue_date"] = _parse_date(raw.get("license_issue_date"))
+    except _RowInvalid:
+        errors.append("Licence Issue Date: invalid date")
+    return errors, []
+
+
 # ── Sheet definitions ─────────────────────────────────────────────────────────
 # Each column: (header, field, required, example, comment)
 SHEETS = [
@@ -235,6 +275,7 @@ SHEETS = [
             ("Cell Phone",         "cell_phone",       False, "0821234567",               None),
             ("Email",              "email",            False, "john.smith@example.com",   None),
             ("Physical Address",   "physical_address", False, "12 Main Rd, Springs",      None),
+            ("Region",             "region",           False, "Gauteng",                  "Any value (free text). Leave blank if unknown."),
             ("Personnel Number",   "personnel_number", False, "EMP-001",                  None),
             # SAPS competency: a number + expiry pair per weapon type. Leave both
             # blank if the guard isn't authorised for that weapon. A complete,
@@ -252,14 +293,17 @@ SHEETS = [
     {
         "name": "Firearms",
         "creator": _create_firearm,
+        "validator": _validate_firearm,
         "columns": [
-            ("Serial Number *",    "serial_number",  True,  "e.g. GLK-100234", None),
-            ("Make *",             "make",           True,  "Glock",           None),
-            ("Model",              "model",          False, "17",              None),
-            ("Type",               "type",           False, "handgun",         "One of: carbine, handgun, rifle, shotgun (or leave blank)"),
-            ("Calibre",            "calibre",        False, "9mm",             None),
-            ("Licence Number",     "license_number", False, "LIC-2024-001",    None),
-            ("Description",        "description",    False, "Duty pistol",     None),
+            ("Serial Number *",    "serial_number",      True,  "e.g. GLK-100234", None),
+            ("Make *",             "make",               True,  "Glock",           None),
+            ("Model",              "model",              False, "17",              None),
+            ("Type",               "type",               False, "handgun",         "One of: carbine, handgun, rifle, shotgun (or leave blank)"),
+            ("Calibre",            "calibre",            False, "9mm",             None),
+            ("Licence Number",     "license_number",     False, "LIC-2024-001",    None),
+            ("Licence Issue Date", "license_issue_date", False, "2024-01-15",      "Issue date, e.g. 2024-01-15. Leave blank if unknown."),
+            ("Ammunition Type",    "ammunition_type",    False, "9mm FMJ",         "Must match an existing Ammunition Type name (Firearms → Ammunition Types). Leave blank if none."),
+            ("Description",        "description",        False, "Duty pistol",     None),
         ],
     },
     {
@@ -272,6 +316,7 @@ SHEETS = [
             ("Is Admin",           "is_admin",         False, "no",                      "yes = full administrator, no = operator"),
             ("Personnel Number",   "personnel_number", False, "EMP-100",                 None),
             ("PSIRA Number",       "psira_number",     False, "PS9988776",               None),
+            ("Competency",         "competency",       False, "Grade C",                 None),
             ("Phone Number",       "phone_number",     False, "0837654321",              None),
             ("ID Number",          "id_number",        False, "9002025009088",           None),
         ],
