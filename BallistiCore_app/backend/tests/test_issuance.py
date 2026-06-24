@@ -8,9 +8,18 @@ from tests.conftest import make_user, make_guard, make_firearm, make_permission
 from app.services import issuance as svc
 
 
+# make_user()'s default password — used to satisfy the issuer/staff e-signature.
+PASSWORD = "testpass"
+
+
 def _issue(db, guard, firearm, user):
-    """Helper: issue a firearm and return the register entry."""
-    return svc.issue_firearm(db, guard.id, firearm.id, user.id)
+    """Helper: issue a firearm and return the register entry.
+
+    The issuing staff member's e-signature (current_user + their password) is
+    mandatory on every issue, so it's supplied here. Guards created via
+    make_guard have no sign-in account, so no guard signature is required."""
+    return svc.issue_firearm(db, guard.id, firearm.id, user.id,
+                             current_user=user, issuer_password=PASSWORD)
 
 
 class TestPermitNumberGeneration:
@@ -169,7 +178,7 @@ class TestReturnFlow:
         make_permission(db, guard.id, firearm.id)
         _issue(db, guard, firearm, user)
 
-        svc.return_firearm(db, firearm.id, user.id)
+        svc.return_firearm(db, firearm.id, user.id, current_user=user, staff_password=PASSWORD)
 
         from app.models.register import Register
         remaining = db.query(Register).all()
@@ -181,7 +190,7 @@ class TestReturnFlow:
         firearm = make_firearm(db)
         make_permission(db, guard.id, firearm.id)
         _issue(db, guard, firearm, user)
-        svc.return_firearm(db, firearm.id, user.id)
+        svc.return_firearm(db, firearm.id, user.id, current_user=user, staff_password=PASSWORD)
 
         from app.models.register_history import RegisterHistory
         history = db.query(RegisterHistory).order_by(RegisterHistory.actioned_at).all()
@@ -197,7 +206,7 @@ class TestReturnFlow:
         make_permission(db, guard.id, firearm.id)
 
         _issue(db, guard, firearm, user)
-        svc.return_firearm(db, firearm.id, user.id)
+        svc.return_firearm(db, firearm.id, user.id, current_user=user, staff_password=PASSWORD)
         entry = _issue(db, guard, firearm, user)  # should not raise
         assert entry.guard_id == guard.id
 
