@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getUsers, createUser, updateUser, deactivateUser, reactivateUser } from '../api/auth'
 import { getBrandingFull, updateBranding } from '../api/branding'
-import {
-  getAmmunitionTypes, createAmmunitionType, updateAmmunitionType, deleteAmmunitionType,
-} from '../api/ammunitionTypes'
+
 import { downloadTemplate, uploadImport, downloadErrorWorkbook } from '../api/imports'
 import { downloadFullExport } from '../api/exports'
 import { useAuth } from '../context/AuthContext'
@@ -523,190 +521,6 @@ function CompanyTab() {
   )
 }
 
-// ── Ammunition Types tab ──────────────────────────────────────────────────────
-const BLANK_AMMO = { name: '', description: '' }
-
-function AmmunitionTypesTab() {
-  const { read_only } = useLicense()
-  const [types, setTypes]         = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [editing, setEditing]     = useState(null)   // null = closed, {} = new, {…} = edit
-  const [form, setForm]           = useState(BLANK_AMMO)
-  const [saving, setSaving]       = useState(false)
-  const [error, setError]         = useState('')
-  const [success, setSuccess]     = useState('')
-
-  const load = () => {
-    setLoading(true)
-    getAmmunitionTypes(true)
-      .then((res) => setTypes(res.data))
-      .finally(() => setLoading(false))
-  }
-
-  useEffect(() => { load() }, [])
-
-  const openNew  = () => { setEditing({}); setForm(BLANK_AMMO); setError('') }
-  const openEdit = (t) => { setEditing(t); setForm({ name: t.name, description: t.description || '' }); setError('') }
-  const close    = () => { setEditing(null); setError('') }
-
-  const handleChange = (e) => setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
-
-  const handleSave = async (e) => {
-    e.preventDefault()
-    setSaving(true)
-    setError('')
-    try {
-      const payload = { name: form.name, description: form.description || null }
-      if (editing?.id) {
-        await updateAmmunitionType(editing.id, payload)
-        setSuccess(`Ammunition type "${form.name}" updated.`)
-      } else {
-        await createAmmunitionType(payload)
-        setSuccess(`Ammunition type "${form.name}" created.`)
-      }
-      load()
-      close()
-    } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to save ammunition type')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleToggleActive = async (t) => {
-    if (t.is_active) {
-      if (!window.confirm(`Deactivate "${t.name}"? It will no longer be selectable on firearms.`)) return
-      await deleteAmmunitionType(t.id)
-    } else {
-      await updateAmmunitionType(t.id, { is_active: true })
-    }
-    load()
-  }
-
-  const statusBadge = (t) =>
-    t.is_active
-      ? <span className="text-xs text-green-400">Active</span>
-      : <span className="text-xs text-slate-500">Inactive</span>
-
-  const typeActions = (t) => (
-    <div className="flex items-center gap-3">
-      <button onClick={() => openEdit(t)} className="text-sm text-blue-400 hover:underline">Edit</button>
-      <button onClick={() => handleToggleActive(t)}
-        className={`text-xs px-2 py-1 rounded transition-colors ${
-          t.is_active
-            ? 'bg-red-500/10 text-red-400 hover:bg-red-100'
-            : 'bg-green-500/10 text-green-400 hover:bg-green-100'
-        }`}>
-        {t.is_active ? 'Deactivate' : 'Reactivate'}
-      </button>
-    </div>
-  )
-
-  return (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-slate-400">{types.length} ammunition type{types.length !== 1 ? 's' : ''}</p>
-        <button onClick={openNew} disabled={read_only}
-          title={read_only ? 'Subscription expired — read-only mode' : undefined}
-          className="bg-blue-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-          + Add Ammunition Type
-        </button>
-      </div>
-
-      {success && editing === null && (
-        <p className="mb-4 text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">{success}</p>
-      )}
-
-      {/* Desktop / tablet: table (md and up) */}
-      <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-800/40 border-b border-slate-700">
-            <tr>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Name</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Description</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wide">Status</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-700/60">
-            {loading ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">Loading…</td></tr>
-            ) : types.length === 0 ? (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-sm text-slate-500">No ammunition types yet</td></tr>
-            ) : types.map((t) => (
-              <tr key={t.id} className="hover:bg-slate-800/50">
-                <td className="px-4 py-3 font-medium text-slate-100">{t.name}</td>
-                <td className="px-4 py-3 text-slate-400 text-xs">{t.description || '—'}</td>
-                <td className="px-4 py-3">{statusBadge(t)}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-3">{typeActions(t)}</div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile: stacked cards (below md) */}
-      <div className="md:hidden space-y-3">
-        {loading ? (
-          <p className="text-sm text-slate-500">Loading…</p>
-        ) : types.length === 0 ? (
-          <p className="text-sm text-slate-500">No ammunition types yet</p>
-        ) : types.map((t) => (
-          <div key={t.id} className="bg-slate-800/60 rounded-xl border border-slate-700 p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium text-slate-100">{t.name}</p>
-                {t.description && <p className="text-xs text-slate-400 mt-0.5">{t.description}</p>}
-              </div>
-              <div className="shrink-0">{statusBadge(t)}</div>
-            </div>
-            <div className="mt-3 pt-3 border-t border-slate-700/60">{typeActions(t)}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Add / Edit dialog */}
-      {editing !== null && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800/60 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-              <h3 className="font-semibold text-slate-100">
-                {editing?.id ? `Edit Ammunition Type` : 'Add Ammunition Type'}
-              </h3>
-              <button onClick={close} className="text-slate-500 hover:text-slate-200 text-lg leading-none">&times;</button>
-            </div>
-
-            <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Name *</label>
-                <input type="text" name="name" value={form.name} onChange={handleChange} required autoFocus
-                  placeholder="e.g. 9mm Parabellum"
-                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Description</label>
-                <textarea name="description" value={form.description} onChange={handleChange} rows={2}
-                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
-              </div>
-
-              {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
-
-              <div className="flex gap-3 pt-1">
-                <button type="submit" disabled={saving}
-                  className="bg-blue-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                  {saving ? 'Saving…' : editing?.id ? 'Save Changes' : 'Create'}
-                </button>
-                <button type="button" onClick={close} className="text-sm text-slate-400 hover:text-slate-100">Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </>
-  )
-}
 
 // ── Import Data tab ───────────────────────────────────────────────────────────
 function ImportDataTab() {
@@ -961,7 +775,8 @@ export default function Admin() {
   }
 
   // Users tab is available to anyone who can reach Admin. The system-management
-  // tabs (ammunition, import, company branding) are super-admin only.
+  // tabs (import, export, company branding) are super-admin only. Ammunition
+  // Types management now lives on the Firearms screen.
   const superAdmin = isSuperAdmin(currentUser)
 
   return (
@@ -971,14 +786,12 @@ export default function Admin() {
       {/* Tabs */}
       <div className="flex border-b border-slate-700 mb-6">
         <Tab label="Users"            active={tab === 'users'}   onClick={() => setTab('users')} />
-        {superAdmin && <Tab label="Ammunition Types" active={tab === 'ammo'}    onClick={() => setTab('ammo')} />}
         {superAdmin && <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />}
         {superAdmin && <Tab label="Export Data"      active={tab === 'export'}  onClick={() => setTab('export')} />}
         {superAdmin && <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />}
       </div>
 
       {tab === 'users'             && <UsersTab currentUser={currentUser} />}
-      {tab === 'ammo'    && superAdmin && <AmmunitionTypesTab />}
       {tab === 'import'  && superAdmin && <ImportDataTab />}
       {tab === 'export'  && superAdmin && <ExportDataTab />}
       {tab === 'company' && superAdmin && <CompanyTab />}

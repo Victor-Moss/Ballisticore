@@ -18,7 +18,7 @@ export default function IssueFirearm() {
     guard_id: '', firearm_id: '', notes: '',
     rounds_issued: '', period_from_time: '', valid_until_time: '',
     cit_cell_route: '', witness: '', saps_competency_number: '',
-    ammunition_issued: '', firearm_inspected_correct: '',
+    firearm_inspected_correct: '',
     cit_id: '', responsible_person_name: '', guard_password: '',
     issuer_password: '',
   })
@@ -110,7 +110,6 @@ export default function IssueFirearm() {
         cit_cell_route: form.cit_cell_route || null,
         witness: form.witness || null,
         saps_competency_number: form.saps_competency_number || null,
-        ammunition_issued: form.ammunition_issued ? parseInt(form.ammunition_issued) : null,
         firearm_inspected_correct: form.firearm_inspected_correct !== '' ? form.firearm_inspected_correct === 'true' : null,
         cit_id: form.cit_id || null,
         responsible_person_name: form.responsible_person_name || null,
@@ -209,12 +208,6 @@ export default function IssueFirearm() {
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1">Rounds Issued</label>
               <input type="number" min="0" name="rounds_issued" value={form.rounds_issued} onChange={handleChange}
-                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-400 mb-1">Ammunition Issued</label>
-              <input type="number" min="0" name="ammunition_issued" value={form.ammunition_issued} onChange={handleChange}
                 className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0" />
             </div>
