@@ -189,7 +189,7 @@ export default function FirearmDetail() {
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-slate-500">Manage the list under Admin → Ammunition Types.</p>
+          <p className="mt-1 text-xs text-slate-500">This ammunition type is linked to the firearm record.</p>
         </div>
 
         {/* Editable fields */}
