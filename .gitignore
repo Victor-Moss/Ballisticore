@@ -28,3 +28,12 @@ backups/
 # ── Editor / OS ─────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
+
+# ── Local dev helpers (never source) ────────────────────────────────────────
+# Sensitive ops notes — keep out of the repo
+How to generate a new license key.txt
+# Local dev launcher scripts
+/run_backend.bat
+/run_frontend.bat
+/start_dev.bat
+/stop_dev.bat
