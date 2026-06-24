@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================================
-rem  BallistiCore — one-time local database setup.
+rem  BallistiCore - one-time local database setup.
 rem  Runs at the end of installation (and is safe to re-run: it no-ops if the
 rem  data directory already exists). Everything it creates lives under the
 rem  install folder, so all data stays on this machine.

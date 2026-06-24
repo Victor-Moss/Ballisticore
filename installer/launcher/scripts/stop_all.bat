@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================================
-rem  BallistiCore — stop the backend and the database.
+rem  BallistiCore - stop the backend and the database.
 rem ============================================================================
 setlocal
 call "%~dp0_env.bat"

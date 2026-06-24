@@ -12,7 +12,7 @@ stays on your premises.
 Get the latest Windows installer from the
 **[Releases page](https://github.com/Victor-Moss/Ballisticore/releases/latest)**:
 
-➡️ **[BallistiCore 1.4.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0)**
+➡️ **[BallistiCore 1.5.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.5.0)**
 
 The installer bundles everything (Python, PostgreSQL and the web app). Run it,
 follow the first-time setup wizard, and BallistiCore opens in your browser.
@@ -21,7 +21,7 @@ Admin → Users.
 
 ## Features
 
-### New in 1.5.0 *(in development — the latest installer is still 1.4.0)*
+### New in 1.5.0
 - **SAPS competency & PSIRA in Excel import** — the Guards import template now
   captures a SAPS Competency Number + Expiry Date for each weapon type (Shotgun,
   Carbine, Rifle, Handgun) alongside the PSIRA number. A valid, complete pair
@@ -44,6 +44,9 @@ Admin → Users.
   history are gated server-side too. Dead checkboxes (Clear Logs and the four
   Weapon Category boxes) that controlled nothing were removed. See
   [PERMISSIONS_MAP.md](PERMISSIONS_MAP.md) for the full checkbox-to-enforcement map.
+- **Wide tables scroll** — the Register, Permits and History tables now scroll
+  horizontally instead of clipping when their columns are wider than the screen,
+  so nothing is cut off on smaller displays.
 
 ### Also included
 - **Granular permissions** *(1.4.0)* — each operator sees only the menu items
@@ -121,7 +124,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
-| 1.5.0 *(in development)* | SAPS competency & PSIRA in Excel import, full data export (Excel + CSV + PDF), fully-enforced permissions · not yet released |
+| [1.5.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.5.0) | SAPS competency & PSIRA in Excel import, full data export (Excel + CSV + PDF), fully-enforced permissions · installer smoke-tested ✅ |
 | [1.4.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0) | Granular permission enforcement + System Admin escalation guard · installer smoke-tested ✅ |
 | [1.3.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0) | Light / dark theme toggle · installer smoke-tested ✅ |
 | [1.2.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.2.0) | Dashboard — key stats + recent-activity timeline · installer smoke-tested ✅ |

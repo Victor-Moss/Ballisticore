@@ -124,7 +124,7 @@ export default function Register() {
       ) : (
         <>
           {/* Desktop / tablet: table (md and up) */}
-          <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="hidden md:block bg-slate-800/60 rounded-xl border border-slate-700 overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-slate-800/40 border-b border-slate-700">
                 <tr>

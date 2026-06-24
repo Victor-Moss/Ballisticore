@@ -1,6 +1,6 @@
 @echo off
 rem ============================================================================
-rem  BallistiCore — shared environment for all launcher scripts.
+rem  BallistiCore - shared environment for all launcher scripts.
 rem  Resolves the install root from this file's location, so the whole folder
 rem  can live anywhere (C:\BallistiCore, a USB drive, etc.) and still work.
 rem ============================================================================
@@ -18,7 +18,7 @@ set "CONFIG=%ROOT%\config"
 rem The PDF generator writes to <backend>\permits, so keep them together.
 set "PERMITS=%ROOT%\backend\permits"
 
-rem Network — loopback only; nothing is exposed off this machine by default.
+rem Network - loopback only; nothing is exposed off this machine by default.
 set "APP_HOST=127.0.0.1"
 set "APP_PORT=8000"
 rem 5433 (not the default 5432) so the bundled DB won't clash with any
