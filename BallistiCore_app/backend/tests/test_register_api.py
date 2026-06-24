@@ -17,11 +17,18 @@ def setup(db):
     return user, guard, firearm, headers
 
 
+# make_user()'s default password — satisfies the mandatory issuer/staff
+# e-signature on issue/return. Guards here have no sign-in account, so no guard
+# password is needed.
+PASSWORD = "testpass"
+
+
 def issue(client, guard_id, firearm_id, user_id, headers):
     return client.post("/api/register/issue", json={
         "guard_id": guard_id,
         "firearm_id": firearm_id,
         "issued_by": user_id,
+        "issuer_password": PASSWORD,
     }, headers=headers)
 
 
@@ -29,6 +36,7 @@ def ret(client, firearm_id, user_id, headers):
     return client.post("/api/register/return", json={
         "firearm_id": firearm_id,
         "actioned_by": user_id,
+        "staff_password": PASSWORD,
     }, headers=headers)
 
 

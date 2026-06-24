@@ -44,7 +44,11 @@ def set_account(client, guard_id, headers, username="jsmith", password="guardpas
 
 
 def issue(client, guard_id, firearm_id, user_id, headers, guard_password=None):
-    payload = {"guard_id": guard_id, "firearm_id": firearm_id, "issued_by": user_id}
+    # The issuing operator's e-signature is always required. make_user()'s default
+    # password is "testpass"; the guard's own signature (guard_password) is only
+    # supplied by tests that exercise the guard-account signing path.
+    payload = {"guard_id": guard_id, "firearm_id": firearm_id, "issued_by": user_id,
+               "issuer_password": "testpass"}
     if guard_password is not None:
         payload["guard_password"] = guard_password
     return client.post("/api/register/issue", json=payload, headers=headers)
