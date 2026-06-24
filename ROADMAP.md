@@ -1,6 +1,6 @@
 # BallistiCore Roadmap
 
-Planned work, grouped by target release. The current shipped version is **1.5.0**
+Planned work, grouped by target release. The current shipped version is **1.6.0**
 (see the releases table in the [README](README.md)).
 
 ## V2

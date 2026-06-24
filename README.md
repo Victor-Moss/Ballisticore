@@ -12,7 +12,7 @@ stays on your premises.
 Get the latest Windows installer from the
 **[Releases page](https://github.com/Victor-Moss/Ballisticore/releases/latest)**:
 
-➡️ **[BallistiCore 1.5.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.5.0)**
+➡️ **[BallistiCore 1.6.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.6.0)**
 
 The installer bundles everything (Python, PostgreSQL and the web app). Run it,
 follow the first-time setup wizard, and BallistiCore opens in your browser.
@@ -21,34 +21,29 @@ Admin → Users.
 
 ## Features
 
-### New in 1.5.0
-- **SAPS competency & PSIRA in Excel import** — the Guards import template now
-  captures a SAPS Competency Number + Expiry Date for each weapon type (Shotgun,
-  Carbine, Rifle, Handgun) alongside the PSIRA number. A valid, complete pair
-  auto-ticks that weapon's permission on the guard. An expired-but-valid
-  competency still imports and is surfaced in a **Review Expired Competencies**
-  list after the run (and flagged on the guard's profile), while malformed or
-  half-filled rows are excluded into a downloadable **error workbook** you can
-  fix and re-import — without redoing the whole file.
-- **Export All Data** — one admin-only action (Admin → Export Data) produces the
-  full dataset in three formats at once, bundled into a single ZIP: an **Excel
-  workbook** (one sheet per entity, with the Guards sheet matching the import
-  template so it round-trips), a **CSV bundle**, and a **PDF compliance summary**
-  (guard counts, weapon-permission breakdown, expired competencies, PSIRA
-  coverage and user-account summary). For readability, every ID/reference field
-  gets a **human-readable companion column** next to it (e.g. guard name, firearm
-  serial, operator name) while the raw IDs are kept intact for re-import. Each
-  export is logged for audit.
-- **Fully-enforced permissions** — every checkbox on the Add/Modify User screen
-  now controls access on the server, not just in the UI; viewing the register and
-  history are gated server-side too. Dead checkboxes (Clear Logs and the four
-  Weapon Category boxes) that controlled nothing were removed. See
-  [PERMISSIONS_MAP.md](PERMISSIONS_MAP.md) for the full checkbox-to-enforcement map.
-- **Wide tables scroll** — the Register, Permits and History tables now scroll
-  horizontally instead of clipping when their columns are wider than the screen,
-  so nothing is cut off on smaller displays.
+### New in 1.6.0
+- **Ammunition Types management** — manage the ammunition types your firearms can
+  be linked to (e.g. 9mm FMJ, 5.56 NATO) from a new **Ammunition Types** tab on the
+  Firearms screen: add, edit, deactivate and reactivate types, with a confirmation
+  before removal. Admin-only, matching the other management screens. A firearm's
+  ammunition type is snapshotted onto each permit at issue time, so renaming a type
+  never rewrites past permits.
+- **More fields in Excel import & export** — the import template and the full-data
+  export now round-trip four more fields: Guard **Region**, User **Competency**,
+  Firearm **Licence Issue Date**, and a Firearm's **Ammunition Type** (matched by
+  name against your existing types). The export's Guards sheet picks up Region
+  automatically, keeping the import template and the export in lock-step.
 
 ### Also included
+- **Export All Data** *(1.5.0)* — one admin-only action exports the full dataset as
+  an Excel workbook, a CSV bundle and a PDF compliance summary in a single ZIP, with
+  a human-readable companion column next to every ID field and an audit-log entry
+  per export.
+- **SAPS competency import & fully-enforced permissions** *(1.5.0)* — the Guards
+  import captures a SAPS Competency + Expiry per weapon type (auto-ticking that
+  weapon's permission, surfacing expired-but-valid pairs for review and routing bad
+  rows to a downloadable **error workbook**); and every Add/Modify User checkbox is
+  enforced on the server, not just the UI. See [PERMISSIONS_MAP.md](PERMISSIONS_MAP.md).
 - **Granular permissions** *(1.4.0)* — each operator sees only the menu items
   their permissions grant; navigating directly to a blocked page shows an Access
   Denied screen, and the same rules are enforced on the server, not just hidden
@@ -72,7 +67,8 @@ Admin → Users.
   guard signatures, ammunition tracking, and full history.
 - **Permits** — auto-generated permit PDFs with optional WhatsApp delivery via
   Twilio (outbound only).
-- **Admin** — users & permissions, ammunition types, and company branding.
+- **Admin** — users & permissions and company branding. (Ammunition types are
+  managed on the Firearms screen — see 1.6.0 above.)
 - **Self-hosted, offline, local** *(1.0.0)* — bundled Python + PostgreSQL; all
   data stays on the machine. The only outbound traffic is optional Twilio
   WhatsApp, and only when configured.
@@ -124,6 +120,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
+| [1.6.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.6.0) | Ammunition Types management on the Firearms screen; Region / Competency / Licence Issue Date / Ammunition Type added to Excel import & export · installer build pending |
 | [1.5.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.5.0) | SAPS competency & PSIRA in Excel import, full data export (Excel + CSV + PDF), fully-enforced permissions · installer smoke-tested ✅ |
 | [1.4.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0) | Granular permission enforcement + System Admin escalation guard · installer smoke-tested ✅ |
 | [1.3.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.3.0) | Light / dark theme toggle · installer smoke-tested ✅ |
