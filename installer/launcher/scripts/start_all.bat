@@ -25,6 +25,18 @@ if not %errorlevel%==0 (
   "%PGBIN%\pg_ctl.exe" -D "%PGDATA%" -l "%LOGS%\postgres.log" -w start
 )
 
+rem --- Apply any pending database migrations (idempotent; no-op when current).-
+rem  Runs on EVERY launch, not just first run, so upgrading the app over an
+rem  existing install always brings the schema up to date before the backend
+rem  serves requests. alembic upgrade head is a fast no-op when already current;
+rem  without this, a release that adds columns would start against the old
+rem  schema and every query touching the new column would fail.
+echo Applying database updates...
+pushd "%BACKEND%"
+"%PY%" -m alembic upgrade head >> "%LOGS%\migrate.log" 2>&1
+if not %errorlevel%==0 echo   Note: a database update step reported an error - see "%LOGS%\migrate.log".
+popd
+
 rem --- Start the backend (serves API + UI) in a minimised window. ------------
 echo Starting BallistiCore...
 pushd "%BACKEND%"

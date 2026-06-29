@@ -84,7 +84,7 @@ export default function Permits() {
           disabled={resending === permit.id}
           className="text-xs text-purple-400 hover:underline disabled:opacity-50"
         >
-          {resending === permit.id ? 'Sending…' : 'WhatsApp'}
+          {resending === permit.id ? 'Sending…' : 'Resend'}
         </button>
       )}
       {resendMsg[permit.id] && (

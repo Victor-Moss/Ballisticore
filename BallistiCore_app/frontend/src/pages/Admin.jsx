@@ -9,6 +9,7 @@ import { useBranding } from '../context/BrandingContext'
 import { useLicense } from '../context/LicenseContext'
 import { hasPerm, isSuperAdmin, canAccessAdmin } from '../utils/permissions'
 import AccessDenied from '../components/AccessDenied'
+import MessagingConfigForm from '../components/MessagingConfigForm'
 
 // ── User form defaults ────────────────────────────────────────────────────────
 const BLANK_USER = {
@@ -522,6 +523,19 @@ function CompanyTab() {
 }
 
 
+// ── Messaging tab ─────────────────────────────────────────────────────────────
+function MessagingTab() {
+  return (
+    <div className="max-w-3xl space-y-4">
+      <p className="text-sm text-slate-400">
+        Choose how issued permits are delivered to your guards. Changing the provider re-validates the
+        credentials before saving. Use the Test button to confirm they work.
+      </p>
+      <MessagingConfigForm saveLabel="Save Messaging Settings" />
+    </div>
+  )
+}
+
 // ── Import Data tab ───────────────────────────────────────────────────────────
 function ImportDataTab() {
   const [file, setFile]       = useState(null)
@@ -786,12 +800,14 @@ export default function Admin() {
       {/* Tabs */}
       <div className="flex border-b border-slate-700 mb-6">
         <Tab label="Users"            active={tab === 'users'}   onClick={() => setTab('users')} />
+        {superAdmin && <Tab label="Messaging"        active={tab === 'messaging'} onClick={() => setTab('messaging')} />}
         {superAdmin && <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />}
         {superAdmin && <Tab label="Export Data"      active={tab === 'export'}  onClick={() => setTab('export')} />}
         {superAdmin && <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />}
       </div>
 
       {tab === 'users'             && <UsersTab currentUser={currentUser} />}
+      {tab === 'messaging' && superAdmin && <MessagingTab />}
       {tab === 'import'  && superAdmin && <ImportDataTab />}
       {tab === 'export'  && superAdmin && <ExportDataTab />}
       {tab === 'company' && superAdmin && <CompanyTab />}

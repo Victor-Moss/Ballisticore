@@ -10,7 +10,7 @@ from app.models.guard import Guard
 
 
 # Header order must match the Guards sheet template exactly.
-GUARD_HEADERS = [h for (h, *_ ) in next(s for s in svc.SHEETS if s["name"] == "Guards")["columns"]]
+GUARD_HEADERS = [h for (h, *_ ) in next(s for s in svc.build_sheets() if s["name"] == "Guards")["columns"]]
 
 
 def _make_guards_book(rows: list[dict]) -> bytes:

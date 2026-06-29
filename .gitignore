@@ -3,6 +3,9 @@
 *.env
 !*.env.template
 !env*.template
+# Messaging provider credentials (Telegram bot token / Twilio auth token) live
+# here once configured — treat like .env: never commit, never bundle.
+BallistiCore_app/backend/config.json
 
 # ── Python ──────────────────────────────────────────────────────────────────
 .venv/
