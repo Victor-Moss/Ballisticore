@@ -13,6 +13,8 @@ from app.models.guard import Guard
 from app.models.firearm import Firearm
 from app.services import permit_generator as gen
 from app.services import whatsapp as wa
+from app.services import messaging_service
+from app.core.messaging_config import get_provider
 
 router = APIRouter(prefix="/api/permits", tags=["Permits"], dependencies=[Depends(require_active_user)])
 public_router = APIRouter(prefix="/api/permits/public", tags=["Permits (public)"])
@@ -107,34 +109,48 @@ def download_mini_permit(permit_id: str, db: Session = Depends(get_db)):
 
 
 class ResendRequest(BaseModel):
-    recipient_number: Optional[str] = None  # override; defaults to guard's cell_phone
+    recipient_number: Optional[str] = None  # override; defaults to the guard's
+    # provider-appropriate address (cell_phone for WhatsApp, telegram_chat_id for Telegram)
 
 
 @router.post("/{permit_id}/resend-whatsapp", dependencies=[Depends(require_permission("perm_send_whatsapp"))])
-def resend_whatsapp(
+def resend_permit(
     permit_id: str,
     data: ResendRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
 ):
+    """Re-deliver a permit via the configured messaging provider. (Route name kept
+    for backwards compatibility; it routes through the unified messaging service.)"""
+    provider = get_provider()
+    if provider == "none":
+        raise HTTPException(
+            status_code=400,
+            detail="No messaging provider is configured — set one under Settings → Messaging.",
+        )
+
     permit = _get_permit_or_404(db, permit_id)
     guard = db.query(Guard).filter(Guard.id == permit.guard_id).first()
     firearm = db.query(Firearm).filter(Firearm.id == permit.firearm_id).first()
 
-    recipient = data.recipient_number or (guard.cell_phone if guard else None)
+    recipient = data.recipient_number or messaging_service.recipient_for(guard)
     if not recipient:
-        raise HTTPException(status_code=400, detail="No recipient number — provide one or add cell_phone to the guard")
+        field = "Telegram Chat ID" if provider == "telegram" else "contact number"
+        raise HTTPException(
+            status_code=400,
+            detail=f"No recipient — provide one or add a {field} to the guard.",
+        )
 
     background_tasks.add_task(
-        wa.send_permit_whatsapp,
+        messaging_service.send_permit,
         db=db,
         permit=permit,
-        recipient_number=recipient,
-        guard_name=f"{guard.first_name} {guard.last_name}" if guard else "Unknown",
-        firearm_serial=firearm.serial_number if firearm else "Unknown",
+        guard=guard,
+        firearm=firearm,
+        recipient_override=recipient,
     )
     return {
-        "message": f"WhatsApp queued for {recipient}",
+        "message": f"Permit delivery queued for {recipient}",
         "permit_number": permit.permit_number,
     }
 

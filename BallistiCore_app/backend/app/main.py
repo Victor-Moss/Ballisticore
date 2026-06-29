@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.branding import branding
 from app.core import license as lic
 from app.core.database import SessionLocal
-from app.routers import auth, locations, ammunition_types, guards, firearms, permissions, register, permits, reports, guard_self, network, imports, exports, dashboard, branding as branding_router, license as license_router
+from app.routers import auth, locations, ammunition_types, guards, firearms, permissions, register, permits, reports, guard_self, network, imports, exports, dashboard, branding as branding_router, license as license_router, messaging as messaging_router
 from app.services.users import seed_admin
 
 
@@ -63,6 +63,7 @@ app.add_middleware(
 
 app.include_router(license_router.router)
 app.include_router(branding_router.router)
+app.include_router(messaging_router.router)
 app.include_router(auth.router)
 app.include_router(locations.router)
 app.include_router(ammunition_types.router)
