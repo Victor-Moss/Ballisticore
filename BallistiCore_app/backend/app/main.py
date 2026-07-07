@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.branding import branding
 from app.core import license as lic
 from app.core.database import SessionLocal
-from app.routers import auth, locations, ammunition_types, guards, firearms, permissions, register, permits, reports, guard_self, network, imports, exports, dashboard, branding as branding_router, license as license_router, messaging as messaging_router
+from app.routers import auth, locations, ammunition_types, guards, firearms, permissions, register, permits, reports, guard_self, network, imports, exports, dashboard, admin, branding as branding_router, license as license_router, messaging as messaging_router
 from app.services.users import seed_admin
 
 
@@ -79,6 +79,7 @@ app.include_router(network.router)
 app.include_router(imports.router)
 app.include_router(exports.router)
 app.include_router(dashboard.router)
+app.include_router(admin.router)
 
 
 @app.get("/health")

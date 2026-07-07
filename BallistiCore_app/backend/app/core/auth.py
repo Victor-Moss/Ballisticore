@@ -1,3 +1,4 @@
+import secrets
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
@@ -10,11 +11,19 @@ from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
+# Session epoch: a random value generated once per server process. Every token
+# is stamped with it (the "ep" claim) and get_current_user rejects tokens whose
+# epoch doesn't match. Because it's regenerated on each startup, stopping the
+# server (e.g. via the in-app Power button) invalidates all outstanding tokens —
+# so after a restart everyone must sign in again, even though tokens are
+# otherwise stateless JWTs living in the browser's localStorage.
+SESSION_EPOCH = secrets.token_hex(8)
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "ep": SESSION_EPOCH})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -28,6 +37,10 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
+            raise credentials_exception
+        # Reject tokens minted by a previous server process (see SESSION_EPOCH):
+        # a restart ends every prior session and forces a fresh login.
+        if payload.get("ep") != SESSION_EPOCH:
             raise credentials_exception
     except JWTError:
         raise credentials_exception

@@ -26,6 +26,9 @@ _DEFAULTS = {
     # Flips to True when the first-time setup wizard is completed; once True the
     # wizard never shows again.
     "setup_completed": False,
+    # Auto-logout after this many minutes of no user activity (min 1). Surfaced
+    # to the frontend idle timer via the public branding endpoint.
+    "session_timeout_minutes": 5,
 }
 
 

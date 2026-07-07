@@ -8,7 +8,7 @@ import { useBranding } from '../context/BrandingContext'
 import { getBrandingFull, updateBranding, completeSetup } from '../api/branding'
 import { createFirearm } from '../api/firearms'
 import { createGuard } from '../api/guards'
-import { createUser } from '../api/auth'
+import { createUser, getUsers } from '../api/auth'
 import { getNetworkInfo } from '../api/network'
 import { getMessagingProvider } from '../api/messaging'
 import MessagingConfigForm from '../components/MessagingConfigForm'
@@ -350,7 +350,9 @@ function GuardsStep({ onNext, onBack }) {
 
 // ── Step 5: Admin Users ──────────────────────────────────────────────────────
 function AdminsStep({ onNext, onBack }) {
-  const blank = { username: '', password: '', email: '', is_admin: true }
+  // Default to a non-admin operator. Admin is a deliberate opt-in so quickly
+  // adding a colleague can't silently grant full System Administrator access.
+  const blank = { username: '', password: '', email: '', is_admin: false }
   const [form, setForm] = useState(blank)
   const [items, setItems] = useState([])
   const [busy, setBusy] = useState(false)
@@ -391,6 +393,13 @@ function AdminsStep({ onNext, onBack }) {
           </label>
         </div>
       </div>
+      {/* Make the two outcomes explicit: full access vs. an operator that starts
+          with no permissions until they're granted in Admin → Users. */}
+      <p className="text-xs text-slate-500 -mt-1">
+        {form.is_admin
+          ? 'System Administrators have full, unrestricted access to every part of the system.'
+          : 'Operators start with no permissions. After setup, grant what each one can do under Admin → Users before they sign in.'}
+      </p>
       {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
       <button type="button" onClick={add} disabled={busy}
         className="inline-flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">
@@ -417,9 +426,15 @@ function FinishStep({ onBack }) {
   const [error, setError] = useState('')
   const [net, setNet] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [operators, setOperators] = useState([])
 
   useEffect(() => {
     getNetworkInfo().then((r) => setNet(r.data)).catch(() => {})
+    // Operator (non-admin) accounts are created with no permissions — the wizard
+    // can't set them. Flag them so the admin reviews access before going live.
+    getUsers()
+      .then((r) => setOperators(r.data.filter((u) => !u.is_admin && !u.perm_system_admin)))
+      .catch(() => {})
   }, [])
 
   // The address other devices use = this server's LAN IP + the port the app is
@@ -485,6 +500,20 @@ function FinishStep({ onBack }) {
           Firewall and that network access is enabled — see the installation README.
         </p>
       </div>
+
+      {/* Operators are created with no permissions — remind the admin to grant
+          access in Admin → Users before those accounts are used. */}
+      {operators.length > 0 && (
+        <div className="text-left bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 max-w-md mx-auto space-y-1">
+          <p className="text-sm font-medium text-amber-300">Review operator permissions</p>
+          <p className="text-xs text-amber-200/80">
+            {operators.length === 1 ? 'One operator account was' : `${operators.length} operator accounts were`} created
+            without any permissions ({operators.map((u) => u.username).join(', ')}). They can sign in but can't do
+            anything yet. Assign each one's permissions under <span className="font-medium">Admin → Users</span> before
+            they go live.
+          </p>
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 inline-block">{error}</p>}
       <div className="flex items-center justify-center gap-3 pt-2">

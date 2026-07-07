@@ -40,7 +40,7 @@ const PERMISSION_LABELS = [
 const BLANK_COMPANY = {
   company_name: '', company_reg: '',
   psira_number: '', company_address: '', permit_prefix: '',
-  support_email: '', primary_color: '#1d4ed8',
+  support_email: '', primary_color: '#1d4ed8', session_timeout_minutes: 5,
 }
 
 // ── Tab button ────────────────────────────────────────────────────────────────
@@ -399,8 +399,14 @@ function CompanyTab() {
     setError('')
     setSuccess('')
     try {
-      await updateBranding(form)
-      await refreshBranding()   // update sidebar/login/title immediately
+      // Clamp the inactivity timeout to a whole number ≥ 1 before saving; the
+      // backend enforces the same lower bound.
+      const payload = {
+        ...form,
+        session_timeout_minutes: Math.max(1, parseInt(form.session_timeout_minutes, 10) || 5),
+      }
+      await updateBranding(payload)
+      await refreshBranding()   // update sidebar/login/title + idle timer immediately
       setSuccess('Company details saved.')
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to save.')
@@ -507,6 +513,20 @@ function CompanyTab() {
                 className="flex-1 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Auto-logout After
+              <span className="ml-1 text-slate-500 font-normal">(minutes of inactivity; min 1)</span>
+            </label>
+            <input
+              type="number"
+              name="session_timeout_minutes"
+              min={1}
+              value={form.session_timeout_minutes}
+              onChange={(e) => setForm((f) => ({ ...f, session_timeout_minutes: e.target.value }))}
+              className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
           </div>
         </div>
       </div>

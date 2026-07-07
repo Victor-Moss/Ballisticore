@@ -63,3 +63,19 @@ class TestProtectedRoutes:
     def test_health_is_public(self, client):
         res = client.get("/health")
         assert res.status_code == 200
+
+
+class TestSessionEpoch:
+    """Tokens are stamped with a per-process session epoch, so a server restart
+    (e.g. after the in-app Power button) invalidates every prior session."""
+
+    def test_token_from_previous_process_is_rejected(self, client, db, monkeypatch):
+        make_user(db, username="dave", password="pass1234")
+        login = client.post("/api/auth/login", data={"username": "dave", "password": "pass1234"})
+        headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+        # Valid within the current process.
+        assert client.get("/api/auth/me", headers=headers).status_code == 200
+        # Simulate a restart: a fresh epoch is generated, so the old token now
+        # belongs to a previous process and must be rejected (forces re-login).
+        monkeypatch.setattr("app.core.auth.SESSION_EPOCH", "different-epoch")
+        assert client.get("/api/auth/me", headers=headers).status_code == 401

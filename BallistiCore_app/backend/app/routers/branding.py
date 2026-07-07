@@ -19,6 +19,7 @@ class BrandingUpdate(BaseModel):
     primary_color: Optional[str] = None
     cit_enabled: Optional[bool] = None
     setup_completed: Optional[bool] = None
+    session_timeout_minutes: Optional[int] = None
 
 
 @router.get("/")
@@ -35,6 +36,7 @@ def get_branding():
         "primary_color": branding["primary_color"],
         "cit_enabled": branding.get("cit_enabled", False),
         "setup_completed": branding.get("setup_completed", False),
+        "session_timeout_minutes": branding.get("session_timeout_minutes", 5),
     }
 
 
@@ -48,6 +50,10 @@ def get_branding_full(current_user=Depends(require_admin)):
 def update_branding(data: BrandingUpdate, current_user=Depends(require_admin)):
     """Admin only — update company details and persist to branding.json."""
     updates = {k: v for k, v in data.model_dump().items() if v is not None}
+    # Enforce the inactivity-timeout bounds server-side: at least 1 minute, and
+    # cap at 24h so a bad value can't effectively disable the auto-logout.
+    if updates.get("session_timeout_minutes") is not None:
+        updates["session_timeout_minutes"] = max(1, min(int(updates["session_timeout_minutes"]), 1440))
     if updates:
         save_branding(updates)
     return dict(branding)

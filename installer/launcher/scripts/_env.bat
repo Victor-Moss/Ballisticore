@@ -18,8 +18,11 @@ set "CONFIG=%ROOT%\config"
 rem The PDF generator writes to <backend>\permits, so keep them together.
 set "PERMITS=%ROOT%\backend\permits"
 
-rem Network - loopback only; nothing is exposed off this machine by default.
-set "APP_HOST=127.0.0.1"
+rem Network - bind all interfaces (0.0.0.0) so other devices on the same LAN/Wi-Fi
+rem can reach the app at http://<this-PC-IP>:%APP_PORT%. The installer adds a
+rem matching Windows Firewall inbound rule (see firewall.bat). Access still
+rem requires signing in; the bundled PostgreSQL stays bound to localhost only.
+set "APP_HOST=0.0.0.0"
 set "APP_PORT=8000"
 rem 5433 (not the default 5432) so the bundled DB won't clash with any
 rem PostgreSQL the client may already have installed on this PC.

@@ -41,7 +41,6 @@ class ReturnRequest(BaseModel):
     in_order: Optional[bool] = None
     remarks: Optional[str] = None
     # History fields
-    ammunition_returned: Optional[int] = None
     permit_returned: Optional[bool] = None
     # Electronic signatures on return:
     #   guard_password — the returning guard ("Returned by"). Required when the

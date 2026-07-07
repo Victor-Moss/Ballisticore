@@ -58,6 +58,19 @@ goto waitloop
 start "" "http://localhost:%APP_PORT%"
 echo.
 echo BallistiCore is running at http://localhost:%APP_PORT%
+
+rem --- LAN reachability hint. The server binds all interfaces (0.0.0.0), so a
+rem  Windows Firewall inbound rule is what lets other devices connect. Warn if
+rem  it's missing so client-site troubleshooting is obvious. Best-effort: a
+rem  "show rule" query needs no elevation; if it can't run we simply skip.
+netsh advfirewall firewall show rule name="BallistiCore" >nul 2>&1
+if not %errorlevel%==0 (
+  echo.
+  echo   NOTE: no "BallistiCore" Windows Firewall rule was found. Other devices
+  echo   on the network may be unable to reach this app. To allow LAN/Wi-Fi
+  echo   access, run  scripts\firewall.bat  as administrator.
+)
+
 echo You can close this window; the app keeps running in the background.
 echo Use "Stop BallistiCore" to shut it down.
 endlocal & exit /b 0
