@@ -23,9 +23,14 @@ export default function Login() {
       navigate('/')
     } catch (err) {
       if (err.response) {
-        setError(err.response.data?.detail || 'Invalid credentials')
+        // Server responded (401 wrong credentials, 403 disabled, 500, etc.).
+        setError(err.response.data?.detail || 'Invalid username or password.')
+      } else if (err.code === 'ECONNABORTED') {
+        // Request timed out — server reachable but not responding in time.
+        setError('The server took too long to respond. It may still be starting up — please try again in a moment.')
       } else {
-        setError('Cannot reach the server. Check your connection and try again.')
+        // No response at all — connection refused / server not running.
+        setError('Server is offline. Make sure BallistiCore is running, then try again.')
       }
     } finally {
       setLoading(false)
