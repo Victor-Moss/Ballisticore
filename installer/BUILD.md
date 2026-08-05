@@ -98,6 +98,44 @@ file to the client; see `README.txt` for their setup steps.
 - Default company branding is collected in the install wizard and written to
   `backend\branding.json`; the operator can change it later under
   **Admin → Company Details**.
+- **Never commit a modified `backend\branding.json`.** It must ship with the
+  defaults (`"Your Company Name"`, `setup_completed: false`), or a fresh install
+  skips the First-Time Setup wizard and starts with someone else's branding. A
+  dev machine that has run the wizard will have local values in that file — check
+  `git status` before committing a release.
+
+## Release process — order of operations
+
+Follow this order. It exists so the git history is *evidence* of what was
+verified, not just a claim about it.
+
+1. **Cut the release** — one commit bumping `AppVersion`, updating the README
+   download link / feature highlights / releases-table row, and the ROADMAP's
+   shipped-version line. The releases-table row starts as
+   `· installer build pending`.
+2. **Build** the payload and compile the installer (Steps 2–3 above). Re-run
+   `build_payload.ps1` even if `payload\` looks populated — it goes stale
+   silently, and a stale payload produces an installer that does not contain
+   the release you are shipping. Confirm a known new symbol is present in
+   `payload\backend` before compiling.
+3. **Smoke-test** the compiled `Setup.exe` (see *Verification status* below for
+   the checklist).
+4. **Only if the smoke test passes**, commit the marker flipping that row to
+   `· installer smoke-tested ✅`.
+5. Merge the release PR, push the annotated tag, publish the GitHub Release with
+   the `Setup.exe` attached and its SHA-256 in the body.
+
+**Do not author the "smoke-tested" marker before the smoke test has run.** It is
+tempting to pre-stage it so the release closes in a single action, and both the
+1.6.0 and 1.8.0 releases did exactly that. In each case the test did pass before
+anything was published, so the claim was true — but the commit timestamps sit
+*earlier* than the installer they vouch for, and nothing in the history shows the
+test happened in between. Anyone auditing later cannot distinguish that from a
+marker committed on the assumption it would pass. Committing the marker after the
+fact costs one extra commit and makes the ordering self-evidencing.
+
+If the smoke test fails, stop: fix, rebuild, re-test. Do not merge, tag, or
+publish a release whose marker is unearned.
 
 ## Notes
 
@@ -117,6 +155,43 @@ file to the client; see `README.txt` for their setup steps.
   without flags, or use `cmd`.
 
 ## Verification status
+
+### Smoke-test checklist (run per release, against the compiled `Setup.exe`)
+
+Run from a **clean slate** — uninstall any existing BallistiCore and remove the
+leftover install directory first, otherwise first-run DB setup is skipped over an
+existing `pgdata` and is not actually exercised. If a working install is present
+on the machine, back the whole tree up and verify the copy (file count + total
+size) before removing anything.
+
+1. **Silent install** — `/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL`;
+   expect exit 0 and the correct version registered under
+   `HKCU:\...\Uninstall`.
+2. **First-run DB setup** — `logs\setup.log` shows `initdb`, role + database
+   creation, all Alembic migrations, and `Setup complete.`; `backend\.env` was
+   generated with real secrets.
+3. **Launcher start** — `BallistiCore.bat`; backend listening on `8000`,
+   PostgreSQL on `5433`.
+4. **`GET /health`** → **200**.
+5. **React UI `GET /`** → **200**.
+6. **`POST /api/auth/login`** (`admin`/`admin1234`, form-encoded — the endpoint
+   takes `OAuth2PasswordRequestForm`, not JSON) → **200** with a token.
+7. **Clean stop** — `Stop BallistiCore.bat`; both ports closed, no stray
+   processes.
+8. **Uninstall** — exit 0; app files, shortcuts and the registry entry removed.
+   `pgdata` and `backend\.env` are *expected to survive* by design, as is any
+   `.pyc` bytecode generated after install (Inno only removes what it installed).
+
+Worth also confirming a known new symbol from the release is present in the
+*installed* backend, which verifies the shipped binary rather than the source
+tree it was built from.
+
+To restore a machine afterwards: reinstall the previous version, then restore
+`pgdata` **and** `backend\.env` from the backup. Restoring `pgdata` alone leaves
+a broken install — a fresh install generates a new random password for the
+`ballisticore_user` role, which will not match the restored cluster.
+
+### Historical results
 
 The **launcher scripts** (`launcher\scripts\*.bat`) were tested end-to-end on
 Windows against a throwaway PostgreSQL 17 instance (isolated port + data dir)
