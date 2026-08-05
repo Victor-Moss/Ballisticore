@@ -12,7 +12,7 @@ stays on your premises.
 Get the latest Windows installer from the
 **[Releases page](https://github.com/Victor-Moss/Ballisticore/releases/latest)**:
 
-➡️ **[BallistiCore 1.7.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.7.0)**
+➡️ **[BallistiCore 1.8.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.8.0)**
 
 The installer bundles everything (Python, PostgreSQL and the web app). Run it,
 follow the first-time setup wizard, and BallistiCore opens in your browser.
@@ -20,6 +20,36 @@ First login is `admin` / `admin1234` — **change it immediately** under
 Admin → Users.
 
 ## Features
+
+### New in 1.8.0
+- **Assign firearms while creating a guard** — pick the guard's firearms from
+  inventory on the creation form instead of saving the guard first and going back
+  to the edit screen. The guard and their assignments are written in one
+  transaction, so a guard can never end up created with weapon types selected but
+  no firearm actually assigned.
+- **One clearance rule for both assignment paths** — the weapon-type clearance
+  check is now shared between guard creation and the edit screen, so an assignment
+  that would be refused at the counter can't be stored from either route.
+  Assignments already on file are never re-checked or invalidated.
+- **CIT permits omit the residential address** — on a Cash-in-Transit install the
+  full permit PDF leaves the guard's home address off entirely. Security Company
+  permits are unchanged. The address stays on the guard record for SAPS compliance
+  either way; it simply isn't printed on a CIT permit.
+- **Firearm authorisation is now restricted** — granting or revoking a guard's
+  firearm permission requires the **Manage Staff** permission. Previously any
+  signed-in user could do either. Viewing permissions is unchanged.
+- **Guards with history can no longer be deleted by mistake** — a guard carrying
+  register entries, issue history or permits must be **deactivated** rather than
+  deleted, so the compliance record they hang off survives. Guards with only
+  firearm assignments and no audit history stay deletable as before, and
+  deactivating a guard deliberately leaves their firearm assignments intact.
+- **Deleting a guard with assigned firearms no longer errors** — this previously
+  failed with a 500.
+- **Permit delivery routes by company type** — delivery resolves its target from
+  the company type and provider: a Cash-in-Transit company sends to the cell
+  number on the CIT route, a security company to the individual guard. Missing
+  contact details now come back as a named error naming the field to fill in,
+  instead of failing silently in the background.
 
 ### New in 1.7.0
 - **Choose how permits are delivered** — a messaging provider setting picks
@@ -141,6 +171,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
+| [1.8.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.8.0) | Inline firearm assignment at guard creation, unified weapon-type clearance validation, CIT permits omit the residential address, Manage Staff gate on firearm authorisation, hard-delete blocked for guards with audit history · installer smoke-tested ✅ |
 | [1.7.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.7.0) | Messaging provider selection (Telegram / WhatsApp / None) with CIT-vs-security delivery routing, LAN access, idle auto-logout, in-app shutdown, wizard permission-default and login-hang fixes · installer smoke-tested ✅ |
 | [1.6.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.6.0) | Ammunition Types management on the Firearms screen; Region / Competency / Licence Issue Date / Ammunition Type added to Excel import & export · installer smoke-tested ✅ |
 | [1.5.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.5.0) | SAPS competency & PSIRA in Excel import, full data export (Excel + CSV + PDF), fully-enforced permissions · installer smoke-tested ✅ |
