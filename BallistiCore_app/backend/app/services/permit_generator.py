@@ -17,7 +17,7 @@ from app.models.permit import Permit
 from app.models.guard import Guard
 from app.models.firearm import Firearm
 from app.services import users as user_svc
-from app.core.branding import branding
+from app.core.branding import branding, is_cit_company
 
 COMPANY_NAME = branding["company_name"]
 COMPANY_REG = branding.get("company_reg", "")
@@ -143,17 +143,26 @@ def generate_full_permit(db: Session, permit: Permit, guard: Guard, firearm: Fir
     elements.append(header_table)
     elements.append(Spacer(1, 3*mm))
 
-    # Guard details
+    # Guard details. A CIT permit omits the residential address row entirely —
+    # label and value together, so the table simply ends one row earlier and no
+    # blank "Address:" line is left behind. The address stays on the guard record
+    # for SAPS compliance either way; it just isn't printed on a CIT permit.
     guard_data = [
         [Paragraph("<b>GUARD DETAILS</b>", centered), "", "", ""],
         ["Name:", ctx["guard_name"], "ID Number:", ctx["guard_id_number"]],
         ["Cell Phone:", ctx["guard_cell"], "Personnel No:", ctx["guard_personnel"]],
-        ["Address:", ctx["guard_address"], "", ""],
     ]
+    show_address = not is_cit_company()
+    if show_address:
+        guard_data.append(["Address:", ctx["guard_address"], "", ""])
+
     guard_table = Table(guard_data, colWidths=[col, col, col, col])
     style = _section_header_style()
     style.add("SPAN", (0, 0), (3, 0))
-    style.add("SPAN", (1, 3), (3, 3))
+    if show_address:
+        # The address value runs across the remaining three columns of its row.
+        address_row = len(guard_data) - 1
+        style.add("SPAN", (1, address_row), (3, address_row))
     guard_table.setStyle(style)
     elements.append(guard_table)
     elements.append(Spacer(1, 2*mm))

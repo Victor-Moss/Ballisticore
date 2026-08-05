@@ -67,6 +67,12 @@ class GuardCreate(GuardBase):
     username: Optional[str] = None
     password: Optional[str] = None
 
+    # Firearms assigned to the guard as part of creation, written in the same
+    # transaction as the guard itself. Optional — a guard can be created with no
+    # firearm (inventory not received yet) and assigned one later from the edit
+    # screen, which remains the way assignments are changed after creation.
+    firearm_ids: list[str] = []
+
     @field_validator("username", "password", mode="before")
     @classmethod
     def empty_creds_to_none(cls, v):

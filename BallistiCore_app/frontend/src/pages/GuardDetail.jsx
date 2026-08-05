@@ -4,13 +4,15 @@ import { getGuard, createGuard, updateGuard, setGuardAccount, resetGuardPassword
 import { getFirearms } from '../api/firearms'
 import { getPermissionsForGuard, setPermission, deletePermission } from '../api/permissions'
 import { getMessagingProvider } from '../api/messaging'
+import { useBranding } from '../context/BrandingContext'
 import api from '../api/client'
 
 const WEAPON_TYPES = ['carbine', 'handgun', 'rifle', 'shotgun']
 
 const BLANK_FORM = {
   first_name: '', last_name: '', id_number: '', psira_number: '',
-  cell_phone: '', telegram_chat_id: '', location_id: '', region: '', personnel_number: '',
+  cell_phone: '', telegram_chat_id: '', physical_address: '',
+  location_id: '', region: '', personnel_number: '',
   username: '', password: '',
   saps_comp_carbine: '', saps_expiry_carbine: '',
   saps_comp_handgun: '', saps_expiry_handgun: '',
@@ -24,6 +26,12 @@ export default function GuardDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isNew = id === 'new'
+
+  // Company type decides who a permit is delivered to. A security company
+  // delivers to the individual guard, so their contact details live here; a CIT
+  // company delivers to the route's cell number, so they don't appear at all.
+  const { cit_enabled } = useBranding()
+  const isSecurityCompany = !cit_enabled
 
   const [form, setForm] = useState(BLANK_FORM)
   const [firearms, setFirearms] = useState([])
@@ -46,6 +54,31 @@ export default function GuardDetail() {
   // Active permit-delivery provider — decides which contact field to show.
   const [provider, setProvider] = useState('none')
 
+  // Firearms picked on the create form, assigned in the same request that
+  // creates the guard. After creation, assignments are managed by the Firearm
+  // Permissions card below.
+  const [newFirearmIds, setNewFirearmIds] = useState([])
+
+  // Inventory available to assign for a weapon type: active, of that type, and
+  // not currently signed out to someone. `is_available` comes from the firearms
+  // endpoint, which is the same list the edit-flow permissions card reads.
+  const availableFor = (weaponType) =>
+    firearms.filter((f) => f.type === weaponType && f.is_active && f.is_available !== false)
+
+  const toggleNewFirearm = (firearmId) =>
+    setNewFirearmIds((ids) =>
+      ids.includes(firearmId) ? ids.filter((x) => x !== firearmId) : [...ids, firearmId])
+
+  // Dropping a weapon type drops any firearm of that type picked under it,
+  // so the submitted assignments always match the selected clearances.
+  const handleWeaponTypeChange = (weaponType, checked) => {
+    setForm((f) => ({ ...f, [`permitted_${weaponType}`]: checked }))
+    if (!checked) {
+      const ofType = new Set(firearms.filter((f) => f.type === weaponType).map((f) => f.id))
+      setNewFirearmIds((ids) => ids.filter((x) => !ofType.has(x)))
+    }
+  }
+
   useEffect(() => {
     getMessagingProvider().then((res) => setProvider(res.data.provider)).catch(() => {})
     getFirearms().then((res) => setFirearms(res.data)).catch(() => {})
@@ -59,6 +92,7 @@ export default function GuardDetail() {
           psira_number: g.psira_number || '',
           cell_phone: g.cell_phone || '',
           telegram_chat_id: g.telegram_chat_id || '',
+          physical_address: g.physical_address || '',
           location_id: g.location_id || '',
           region: g.region || '',
           personnel_number: g.personnel_number || '',
@@ -125,6 +159,8 @@ export default function GuardDetail() {
           saps_expiry_shotgun: form.saps_expiry_shotgun || null,
           username: form.username.trim(),
           password: form.password,
+          // Assigned in the same transaction as the guard — see GuardCreate.
+          firearm_ids: newFirearmIds,
         })
         navigate('/guards')
       } else {
@@ -339,8 +375,10 @@ export default function GuardDetail() {
               { name: 'id_number',        label: 'ID Number' },
               { name: 'psira_number',     label: 'PSIRA Number' },
               { name: 'personnel_number', label: 'Personnel Number' },
-              // Contact field depends on the messaging provider (see below).
-              ...(provider === 'whatsapp' ? [{ name: 'cell_phone', label: 'Contact Number (WhatsApp)' }] : []),
+              // Security companies deliver to the guard, so their cell number is
+              // always captured — regardless of which provider is active. CIT
+              // companies deliver to the route instead, so it's omitted there.
+              ...(isSecurityCompany ? [{ name: 'cell_phone', label: 'Cell Number' }] : []),
               { name: 'region',           label: 'Region' },
             ].map((field) => (
               <div key={field.name}>
@@ -351,8 +389,9 @@ export default function GuardDetail() {
             ))}
           </div>
 
-          {/* Telegram delivery field — shown only when the provider is Telegram */}
-          {provider === 'telegram' && (
+          {/* Telegram delivery field — only meaningful when permits are delivered
+              to the guard over Telegram, i.e. a security company on that provider. */}
+          {provider === 'telegram' && isSecurityCompany && (
             <div className="mt-4">
               <label className="block text-xs font-medium text-slate-400 mb-1">Telegram Chat ID</label>
               <input type="text" name="telegram_chat_id" value={form.telegram_chat_id} onChange={handleChange}
@@ -364,6 +403,17 @@ export default function GuardDetail() {
               </p>
             </div>
           )}
+
+          {/* Kept on record for SAPS compliance; not printed on the permit. */}
+          <div className="mt-4">
+            <label className="block text-xs font-medium text-slate-400 mb-1">Residential Address</label>
+            <textarea name="physical_address" value={form.physical_address} onChange={handleChange} rows={2}
+              className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. 12 Main Road, Springs" />
+            <p className="text-xs text-slate-500 mt-1">
+              Held on the guard's record for SAPS compliance record-keeping.
+            </p>
+          </div>
         </div>
 
         {/* SAPS Competency */}
@@ -401,12 +451,56 @@ export default function GuardDetail() {
             {WEAPON_TYPES.map((wt) => (
               <label key={wt} className="flex items-center gap-2 text-sm text-slate-200 capitalize cursor-pointer">
                 <input type="checkbox" name={`permitted_${wt}`} checked={form[`permitted_${wt}`]}
-                  onChange={handleChange} className="rounded" />
+                  onChange={isNew
+                    ? (e) => handleWeaponTypeChange(wt, e.target.checked)
+                    : handleChange}
+                  className="rounded" />
                 {wt}
               </label>
             ))}
           </div>
         </div>
+
+        {/* Assign firearms inline — creation only. After creation, assignments
+            are managed by the Firearm Permissions card further down the page. */}
+        {isNew && WEAPON_TYPES.some((wt) => form[`permitted_${wt}`]) && (
+          <div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Assign Firearms</p>
+            <p className="text-xs text-slate-400 mb-3">
+              Optional — pick from available inventory for each weapon type selected above.
+              You can leave this empty and assign a firearm later.
+            </p>
+            <div className="space-y-4">
+              {WEAPON_TYPES.filter((wt) => form[`permitted_${wt}`]).map((wt) => {
+                const options = availableFor(wt)
+                return (
+                  <div key={wt} className="bg-slate-800/40 border border-slate-700 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-slate-300 capitalize mb-2">{wt}</p>
+                    {options.length === 0 ? (
+                      <p className="text-xs text-slate-500">
+                        No {wt} available in inventory. The guard can still be created — assign one
+                        from their profile once stock is received.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {options.map((fa) => (
+                          <label key={fa.id} className="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" checked={newFirearmIds.includes(fa.id)}
+                              onChange={() => toggleNewFirearm(fa.id)} className="rounded" />
+                            <span className="text-sm text-slate-200">
+                              {fa.make} {fa.model} — <span className="text-slate-400">{fa.serial_number}</span>
+                              {fa.calibre && <span className="ml-1 text-xs text-slate-500">{fa.calibre}</span>}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {success && <p className="text-sm text-green-400 bg-green-500/10 border border-green-500/30 rounded-lg px-3 py-2">{success}</p>}
 
@@ -446,10 +540,14 @@ export default function GuardDetail() {
         </div>
       )}
 
-      {/* CIT Routes */}
-      {!isNew && (
+      {/* CIT Routes — the cell number here is the delivery target for CIT permits */}
+      {!isNew && cit_enabled && (
         <div className="bg-slate-800/60 rounded-xl border border-slate-700 p-6">
-          <h3 className="font-semibold text-slate-100 mb-4">CIT Routes</h3>
+          <h3 className="font-semibold text-slate-100 mb-1">CIT Routes</h3>
+          <p className="text-xs text-slate-400 mb-4">
+            Permits issued against a route are delivered by WhatsApp to that route's cell number,
+            not to the guard's own number.
+          </p>
           {citRoutes.length === 0 ? (
             <p className="text-sm text-slate-500 mb-4">No CIT routes assigned</p>
           ) : (
@@ -479,7 +577,7 @@ export default function GuardDetail() {
                 placeholder="e.g. CBD Route 1" />
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-slate-400 mb-1">Cell Phone</label>
+              <label className="block text-xs font-medium text-slate-400 mb-1">Cell Number (WhatsApp delivery)</label>
               <input type="text" value={newRoute.cell_phone}
                 onChange={(e) => setNewRoute((r) => ({ ...r, cell_phone: e.target.value }))}
                 className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

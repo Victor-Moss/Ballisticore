@@ -6,11 +6,15 @@ It reads the configured provider from config.json (see core.messaging_config) an
 routes to the right transport:
 
   - telegram : POST https://api.telegram.org/bot{token}/sendDocument with the
-               permit PDF uploaded as a file. Recipient = guard.telegram_chat_id.
+               permit PDF uploaded as a file.
   - whatsapp : existing Twilio logic (services.whatsapp), unchanged.
-               Recipient = guard.cell_phone.
   - none     : no-op — permits are generated but not auto-delivered. Returns
                success silently.
+
+WHERE a permit goes depends on the company type as well as the provider — see
+resolve_delivery_target(). A security company delivers to the individual guard;
+a CIT company delivers to the cell number on the CIT route record, never to the
+guard's own number.
 
 Callers (issuance, return, resend) call send_permit() and never need to know
 which provider is active. Delivery attempts are logged and recorded on the permit
@@ -23,11 +27,13 @@ from pathlib import Path
 import httpx
 from sqlalchemy.orm import Session
 
+from app.core.branding import is_cit_company
 from app.core.messaging_config import (
     get_provider,
     get_messaging,
     normalise_whatsapp_from,
 )
+from app.models.guard import GuardCITRoute
 from app.models.permit import Permit
 from app.services import whatsapp as wa
 
@@ -111,20 +117,90 @@ def _send_permit_telegram(
     return ok
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
-def recipient_for(guard) -> str | None:
-    """The delivery address for the active provider, read off the guard.
+# ── Delivery target ───────────────────────────────────────────────────────────
+class DeliveryTargetError(Exception):
+    """No usable delivery address for this permit.
 
-    Telegram → telegram_chat_id, WhatsApp → cell_phone, None → None.
+    The message is operator-facing and names the missing detail exactly (e.g.
+    "No Telegram Chat ID configured for this guard"), so the UI can show it
+    instead of a generic failure.
+    """
+
+
+def _cit_route_number(db: Session, permit: Permit, guard) -> str:
+    """The cell number on the CIT route this permit was issued against.
+
+    The permit records the route by name (permit.cit_cell_route, captured on the
+    issue form), so match on that. When the guard has exactly one route and the
+    permit doesn't name one, that route is unambiguous — use it.
+    """
+    routes = (
+        db.query(GuardCITRoute).filter(GuardCITRoute.guard_id == guard.id).all()
+        if guard is not None
+        else []
+    )
+
+    route_name = (getattr(permit, "cit_cell_route", None) or "").strip()
+    route = None
+    if route_name:
+        route = next(
+            (r for r in routes if (r.route_name or "").strip().lower() == route_name.lower()),
+            None,
+        )
+    if route is None and len(routes) == 1 and not route_name:
+        route = routes[0]
+
+    number = (route.cell_phone or "").strip() if route is not None else ""
+    if not number:
+        raise DeliveryTargetError("No cell number configured for this route")
+    return number
+
+
+def resolve_delivery_target(db: Session, permit: Permit, guard) -> str:
+    """Where this permit must be delivered, given the company type and provider.
+
+        Security company + Telegram → guard.telegram_chat_id
+        Security company + WhatsApp → guard.cell_phone
+        CIT company      + WhatsApp → the CIT route's cell number
+        CIT company      + Telegram → not a valid combination
+
+    Raises DeliveryTargetError, naming the missing detail, when the required
+    contact field is blank.
     """
     provider = get_provider()
+
+    if provider == "none":
+        raise DeliveryTargetError(
+            "No messaging provider is configured — set one under Settings → Messaging."
+        )
+
+    if is_cit_company():
+        # CIT permits go to the route, never to the individual guard. Telegram has
+        # no route-level address, so the combination is unsupported by design.
+        if provider != "whatsapp":
+            raise DeliveryTargetError(
+                "CIT permits are delivered to the route's cell number over WhatsApp — "
+                f"the {provider} provider cannot be used for a CIT company."
+            )
+        return _cit_route_number(db, permit, guard)
+
+    # Security company — the permit belongs to the individual guard.
     if provider == "telegram":
-        return getattr(guard, "telegram_chat_id", None)
+        chat_id = (getattr(guard, "telegram_chat_id", None) or "").strip() if guard else ""
+        if not chat_id:
+            raise DeliveryTargetError("No Telegram Chat ID configured for this guard")
+        return chat_id
+
     if provider == "whatsapp":
-        return guard.cell_phone
-    return None
+        number = (getattr(guard, "cell_phone", None) or "").strip() if guard else ""
+        if not number:
+            raise DeliveryTargetError("No cell number configured for this guard")
+        return number
+
+    raise DeliveryTargetError(f"Unknown messaging provider: {provider}")
 
 
+# ── Public API ────────────────────────────────────────────────────────────────
 def send_permit(
     db: Session,
     permit: Permit,
@@ -146,15 +222,25 @@ def send_permit(
         print(f"Messaging: provider is 'none' — permit {permit.permit_number} not auto-delivered")
         return True
 
+    # An override supplies the address, not the routing rules — an unsupported
+    # company-type/provider combination is still refused.
+    if is_cit_company() and provider != "whatsapp":
+        print(
+            f"Messaging: permit {permit.permit_number} not delivered — CIT permits require "
+            f"the WhatsApp provider, not {provider!r}"
+        )
+        return False
+
+    try:
+        recipient = recipient_override or resolve_delivery_target(db, permit, guard)
+    except DeliveryTargetError as e:
+        print(f"Messaging: permit {permit.permit_number} not delivered — {e}")
+        return False
+
     if provider == "telegram":
-        chat_id = recipient_override or (getattr(guard, "telegram_chat_id", None) if guard else None)
-        return _send_permit_telegram(db, permit, chat_id, guard_name, firearm_serial)
+        return _send_permit_telegram(db, permit, recipient, guard_name, firearm_serial)
 
     if provider == "whatsapp":
-        recipient = recipient_override or (guard.cell_phone if guard else None)
-        if not recipient:
-            print(f"WhatsApp: guard {guard_name} has no contact number — skipping send")
-            return False
         return wa.send_permit_whatsapp(
             db=db,
             permit=permit,

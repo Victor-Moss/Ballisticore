@@ -109,8 +109,8 @@ def download_mini_permit(permit_id: str, db: Session = Depends(get_db)):
 
 
 class ResendRequest(BaseModel):
-    recipient_number: Optional[str] = None  # override; defaults to the guard's
-    # provider-appropriate address (cell_phone for WhatsApp, telegram_chat_id for Telegram)
+    recipient_number: Optional[str] = None  # override; defaults to the target for
+    # this company type + provider (see messaging_service.resolve_delivery_target)
 
 
 @router.post("/{permit_id}/resend-whatsapp", dependencies=[Depends(require_permission("perm_send_whatsapp"))])
@@ -133,13 +133,16 @@ def resend_permit(
     guard = db.query(Guard).filter(Guard.id == permit.guard_id).first()
     firearm = db.query(Firearm).filter(Firearm.id == permit.firearm_id).first()
 
-    recipient = data.recipient_number or messaging_service.recipient_for(guard)
-    if not recipient:
-        field = "Telegram Chat ID" if provider == "telegram" else "contact number"
-        raise HTTPException(
-            status_code=400,
-            detail=f"No recipient — provide one or add a {field} to the guard.",
-        )
+    # Resolve the target up front so a missing contact detail comes back as a
+    # named 400 the operator can act on, rather than failing quietly in the
+    # background task.
+    if data.recipient_number:
+        recipient = data.recipient_number
+    else:
+        try:
+            recipient = messaging_service.resolve_delivery_target(db, permit, guard)
+        except messaging_service.DeliveryTargetError as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
     background_tasks.add_task(
         messaging_service.send_permit,

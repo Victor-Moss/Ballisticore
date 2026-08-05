@@ -59,7 +59,11 @@ class Guard(Base):
     reset_otp_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     location: Mapped[Optional["Location"]] = relationship("Location", back_populates="guards")
-    permissions: Mapped[list["GuardFirearmPermission"]] = relationship("GuardFirearmPermission", back_populates="guard")
+    # Firearm assignments are authorisation links, not audit history — they go
+    # with the guard. Without the cascade SQLAlchemy tries to NULL the NOT NULL
+    # guard_id and deleting an assigned guard fails with an IntegrityError.
+    permissions: Mapped[list["GuardFirearmPermission"]] = relationship(
+        "GuardFirearmPermission", back_populates="guard", cascade="all, delete-orphan")
     register_entries: Mapped[list["Register"]] = relationship("Register", back_populates="guard")
     history_entries: Mapped[list["RegisterHistory"]] = relationship("RegisterHistory", back_populates="guard")
     permits: Mapped[list["Permit"]] = relationship("Permit", back_populates="guard")

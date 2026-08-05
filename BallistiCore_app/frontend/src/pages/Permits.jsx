@@ -36,7 +36,14 @@ export default function Permits() {
       await resendWhatsapp(permit.id)
       setResendMsg((m) => ({ ...m, [permit.id]: 'Sent!' }))
     } catch (err) {
-      setResendMsg((m) => ({ ...m, [permit.id]: 'Failed' }))
+      // Show the server's named reason ("No Telegram Chat ID configured for this
+      // guard", "No cell number configured for this route") — a bare "Failed"
+      // gives the operator nothing to act on.
+      const detail = err.response?.data?.detail
+      setResendMsg((m) => ({
+        ...m,
+        [permit.id]: typeof detail === 'string' && detail ? detail : 'Failed',
+      }))
     } finally {
       setResending(null)
     }
@@ -63,7 +70,7 @@ export default function Permits() {
     )
 
   const actions = (permit) => (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 flex-wrap">
       <button
         onClick={() => handleDownload(permit.id, 'full')}
         disabled={downloading === `${permit.id}-full`}

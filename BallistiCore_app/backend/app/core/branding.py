@@ -45,6 +45,16 @@ def _load() -> dict:
 branding = _load()
 
 
+def is_cit_company() -> bool:
+    """True for a Cash-in-Transit install, False for a Security Company install.
+
+    Company type is chosen once in first-time setup and stored as `cit_enabled`.
+    It decides where a permit is delivered: a CIT company sends to the cell number
+    on the CIT route record, a security company sends to the individual guard.
+    """
+    return bool(branding.get("cit_enabled", False))
+
+
 def save_branding(updates: dict) -> None:
     """Update branding in-place and persist to branding.json."""
     branding.update(updates)

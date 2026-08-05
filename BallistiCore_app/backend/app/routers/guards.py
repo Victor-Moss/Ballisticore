@@ -10,9 +10,23 @@ from app.schemas.guard import (
 from app.schemas.permission import PermissionOut
 from app.services import guards as svc
 from app.services import permissions as perm_svc
+from app.services import firearms as firearm_svc
 from app.services import guard_auth
 
 router = APIRouter(prefix="/api/guards", tags=["Guards"], dependencies=[Depends(require_active_user)])
+
+
+def _validate_firearm_assignments(db: Session, data: GuardCreate) -> None:
+    """Reject inline firearm assignments that could never be issued.
+
+    Shares perm_svc.validate_assignment with the edit-flow assignment path, so
+    both enforce the same rule. The GuardCreate payload stands in for the guard's
+    clearance flags — the guard doesn't exist yet at this point."""
+    for firearm_id in dict.fromkeys(data.firearm_ids):
+        firearm = firearm_svc.get_by_id(db, firearm_id)
+        if not firearm:
+            raise HTTPException(status_code=404, detail="Firearm not found")
+        perm_svc.validate_assignment(data, firearm)
 
 
 @router.get("/", response_model=list[GuardOut])
@@ -45,6 +59,9 @@ def create_guard(data: GuardCreate, db: Session = Depends(get_db)):
     # a half-created guard with no account.
     if data.username and not guard_auth.username_available(db, data.username):
         raise HTTPException(status_code=409, detail="That username is already taken")
+    # Same for any firearms being assigned inline — check them up front so the
+    # guard is never written when an assignment would fail.
+    _validate_firearm_assignments(db, data)
     guard = svc.create(db, data)
     if data.username:
         guard_auth.set_account(db, guard, data.username, data.password)
@@ -96,6 +113,19 @@ def delete_guard(
         raise HTTPException(
             status_code=409,
             detail="Cannot delete guard — they currently have a firearm issued. Return it first.",
+        )
+    # A guard who has generated audit-relevant activity is never hard-deletable:
+    # their issue history and permits are compliance records, so the guard row
+    # they hang off has to stay. Deactivation is the supported route — it keeps
+    # every record intact and takes the guard out of new issuance.
+    if svc.has_audit_history(db, guard_id):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Cannot delete guard — they have issue history or permits on record, "
+                "which must be retained. Deactivate the guard instead: they will no "
+                "longer be available for new issuance and their history stays intact."
+            ),
         )
     svc.hard_delete(db, guard)
 
