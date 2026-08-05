@@ -12,7 +12,7 @@ stays on your premises.
 Get the latest Windows installer from the
 **[Releases page](https://github.com/Victor-Moss/Ballisticore/releases/latest)**:
 
-➡️ **[BallistiCore 1.6.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.6.0)**
+➡️ **[BallistiCore 1.7.0 — download the installer](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.7.0)**
 
 The installer bundles everything (Python, PostgreSQL and the web app). Run it,
 follow the first-time setup wizard, and BallistiCore opens in your browser.
@@ -20,6 +20,27 @@ First login is `admin` / `admin1234` — **change it immediately** under
 Admin → Users.
 
 ## Features
+
+### New in 1.7.0
+- **Choose how permits are delivered** — a messaging provider setting picks
+  **Telegram**, **WhatsApp** or **None**. Telegram sends to a guard's chat ID,
+  WhatsApp to their cell number, and None turns delivery off entirely for sites
+  that hand permits over on paper. Guards gained the profile fields each provider
+  needs, and delivery routes by company type: a Cash-in-Transit company sends to
+  the cell number on the CIT route, a security company to the individual guard.
+- **Access from other machines on the network** — the app binds to the LAN so
+  staff can reach it at `http://<this-PC-IP>:8000` from another PC on the same
+  network. The bundled PostgreSQL stays bound to localhost only.
+- **Idle auto-logout** — an unattended session signs itself out rather than
+  leaving the register open on a shared machine.
+- **Shutdown control** — stop the whole stack from inside the app instead of
+  hunting for the Stop shortcut.
+- **First-Time Setup wizard permission defaults fixed** — the operator created by
+  the wizard now lands with the permissions actually intended, instead of an
+  over- or under-privileged account.
+- **Login hang fixed** — sign-in no longer stalls indefinitely when the backend
+  is slow or unreachable: requests time out, the 401 interceptor no longer loops,
+  and offline/timeout conditions surface as a readable error.
 
 ### New in 1.6.0
 - **Ammunition Types management** — manage the ammunition types your firearms can
@@ -120,6 +141,7 @@ npm install && npm run dev
 
 | Version | Highlights |
 | --- | --- |
+| [1.7.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.7.0) | Messaging provider selection (Telegram / WhatsApp / None) with CIT-vs-security delivery routing, LAN access, idle auto-logout, in-app shutdown, wizard permission-default and login-hang fixes · installer smoke-tested ✅ |
 | [1.6.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.6.0) | Ammunition Types management on the Firearms screen; Region / Competency / Licence Issue Date / Ammunition Type added to Excel import & export · installer smoke-tested ✅ |
 | [1.5.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.5.0) | SAPS competency & PSIRA in Excel import, full data export (Excel + CSV + PDF), fully-enforced permissions · installer smoke-tested ✅ |
 | [1.4.0](https://github.com/Victor-Moss/Ballisticore/releases/tag/v1.4.0) | Granular permission enforcement + System Admin escalation guard · installer smoke-tested ✅ |
