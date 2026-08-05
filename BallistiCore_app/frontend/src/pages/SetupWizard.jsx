@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Building2, Crosshair, Shield, UserCog, CheckCircle2,
+  Building2, Crosshair, Shield, UserCog, CheckCircle2, MessageSquare,
   Check, Plus, Trash2, ArrowLeft, ArrowRight, Loader2, Rocket, Wifi, Copy,
 } from 'lucide-react'
 import { useBranding } from '../context/BrandingContext'
 import { getBrandingFull, updateBranding, completeSetup } from '../api/branding'
 import { createFirearm } from '../api/firearms'
 import { createGuard } from '../api/guards'
-import { createUser } from '../api/auth'
+import { createUser, getUsers } from '../api/auth'
 import { getNetworkInfo } from '../api/network'
+import { getMessagingProvider } from '../api/messaging'
+import MessagingConfigForm from '../components/MessagingConfigForm'
 
 const STEPS = [
-  { n: 1, label: 'Company',  icon: Building2 },
-  { n: 2, label: 'Firearms', icon: Crosshair },
-  { n: 3, label: 'Guards',   icon: Shield },
-  { n: 4, label: 'Admins',   icon: UserCog },
-  { n: 5, label: 'Finish',   icon: CheckCircle2 },
+  { n: 1, label: 'Company',   icon: Building2 },
+  { n: 2, label: 'Messaging', icon: MessageSquare },
+  { n: 3, label: 'Firearms',  icon: Crosshair },
+  { n: 4, label: 'Guards',    icon: Shield },
+  { n: 5, label: 'Admins',    icon: UserCog },
+  { n: 6, label: 'Finish',    icon: CheckCircle2 },
 ]
+const STEP_COUNT = STEPS.length
 
 const FIREARM_TYPES = ['', 'carbine', 'handgun', 'rifle', 'shotgun']
 
@@ -188,7 +192,26 @@ function CompanyStep({ onNext }) {
   )
 }
 
-// ── Step 2: Firearms ─────────────────────────────────────────────────────────
+// ── Step 2: Messaging (permit delivery provider) ─────────────────────────────
+function MessagingStep({ onNext, onBack }) {
+  return (
+    <div className="space-y-5">
+      <p className="text-sm text-slate-400">
+        Choose how issued permits are delivered to your guards. You can change this any time under
+        Settings → Messaging. Use the Test button to confirm your credentials before continuing.
+      </p>
+      <MessagingConfigForm onSaved={onNext} saveLabel="Save & Continue" />
+      <div className="pt-1">
+        <button type="button" onClick={onBack}
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-slate-100">
+          <ArrowLeft size={15} /> Back
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Step 3: Firearms ─────────────────────────────────────────────────────────
 function FirearmsStep({ onNext, onBack }) {
   const blank = { serial_number: '', make: '', model: '', type: '', calibre: '' }
   const [form, setForm] = useState(blank)
@@ -248,14 +271,19 @@ function FirearmsStep({ onNext, onBack }) {
   )
 }
 
-// ── Step 3: Guards ───────────────────────────────────────────────────────────
+// ── Step 4: Guards ───────────────────────────────────────────────────────────
 function GuardsStep({ onNext, onBack }) {
-  const blank = { first_name: '', last_name: '', id_number: '', psira_number: '', cell_phone: '' }
+  const blank = { first_name: '', last_name: '', id_number: '', psira_number: '', cell_phone: '', telegram_chat_id: '' }
   const [form, setForm] = useState(blank)
   const [items, setItems] = useState([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [provider, setProvider] = useState('none')
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+
+  useEffect(() => {
+    getMessagingProvider().then((res) => setProvider(res.data.provider)).catch(() => {})
+  }, [])
 
   const add = async () => {
     if (!form.first_name.trim() || !form.last_name.trim()) { setError('First and last name are required.'); return }
@@ -284,10 +312,24 @@ function GuardsStep({ onNext, onBack }) {
         <Field label="PSIRA Number">
           <input className={inputCls} value={form.psira_number} onChange={(e) => set('psira_number', e.target.value)} />
         </Field>
-        <Field label="Cell Phone">
-          <input className={inputCls} value={form.cell_phone} onChange={(e) => set('cell_phone', e.target.value)} />
-        </Field>
+        {provider === 'whatsapp' && (
+          <Field label="Cell Phone (WhatsApp)">
+            <input className={inputCls} value={form.cell_phone} onChange={(e) => set('cell_phone', e.target.value)} />
+          </Field>
+        )}
+        {provider === 'telegram' && (
+          <Field label="Telegram Chat ID">
+            <input className={`${inputCls} font-mono`} value={form.telegram_chat_id}
+              onChange={(e) => set('telegram_chat_id', e.target.value)} placeholder="e.g. 123456789" />
+          </Field>
+        )}
       </div>
+      {provider === 'telegram' && (
+        <p className="text-xs text-slate-500 -mt-2">
+          Guards must send <span className="font-mono text-slate-300">/start</span> to your Telegram bot to get
+          their Chat ID. You can fill these in later from each guard's profile.
+        </p>
+      )}
       {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
       <button type="button" onClick={add} disabled={busy}
         className="inline-flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">
@@ -306,9 +348,11 @@ function GuardsStep({ onNext, onBack }) {
   )
 }
 
-// ── Step 4: Admin Users ──────────────────────────────────────────────────────
+// ── Step 5: Admin Users ──────────────────────────────────────────────────────
 function AdminsStep({ onNext, onBack }) {
-  const blank = { username: '', password: '', email: '', is_admin: true }
+  // Default to a non-admin operator. Admin is a deliberate opt-in so quickly
+  // adding a colleague can't silently grant full System Administrator access.
+  const blank = { username: '', password: '', email: '', is_admin: false }
   const [form, setForm] = useState(blank)
   const [items, setItems] = useState([])
   const [busy, setBusy] = useState(false)
@@ -349,6 +393,13 @@ function AdminsStep({ onNext, onBack }) {
           </label>
         </div>
       </div>
+      {/* Make the two outcomes explicit: full access vs. an operator that starts
+          with no permissions until they're granted in Admin → Users. */}
+      <p className="text-xs text-slate-500 -mt-1">
+        {form.is_admin
+          ? 'System Administrators have full, unrestricted access to every part of the system.'
+          : 'Operators start with no permissions. After setup, grant what each one can do under Admin → Users before they sign in.'}
+      </p>
       {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">{error}</p>}
       <button type="button" onClick={add} disabled={busy}
         className="inline-flex items-center gap-2 text-sm bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">
@@ -367,7 +418,7 @@ function AdminsStep({ onNext, onBack }) {
   )
 }
 
-// ── Step 5: Completion ───────────────────────────────────────────────────────
+// ── Step 6: Completion ───────────────────────────────────────────────────────
 function FinishStep({ onBack }) {
   const navigate = useNavigate()
   const { refresh } = useBranding()
@@ -375,9 +426,15 @@ function FinishStep({ onBack }) {
   const [error, setError] = useState('')
   const [net, setNet] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [operators, setOperators] = useState([])
 
   useEffect(() => {
     getNetworkInfo().then((r) => setNet(r.data)).catch(() => {})
+    // Operator (non-admin) accounts are created with no permissions — the wizard
+    // can't set them. Flag them so the admin reviews access before going live.
+    getUsers()
+      .then((r) => setOperators(r.data.filter((u) => !u.is_admin && !u.perm_system_admin)))
+      .catch(() => {})
   }, [])
 
   // The address other devices use = this server's LAN IP + the port the app is
@@ -444,6 +501,20 @@ function FinishStep({ onBack }) {
         </p>
       </div>
 
+      {/* Operators are created with no permissions — remind the admin to grant
+          access in Admin → Users before those accounts are used. */}
+      {operators.length > 0 && (
+        <div className="text-left bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 max-w-md mx-auto space-y-1">
+          <p className="text-sm font-medium text-amber-300">Review operator permissions</p>
+          <p className="text-xs text-amber-200/80">
+            {operators.length === 1 ? 'One operator account was' : `${operators.length} operator accounts were`} created
+            without any permissions ({operators.map((u) => u.username).join(', ')}). They can sign in but can't do
+            anything yet. Assign each one's permissions under <span className="font-medium">Admin → Users</span> before
+            they go live.
+          </p>
+        </div>
+      )}
+
       {error && <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 inline-block">{error}</p>}
       <div className="flex items-center justify-center gap-3 pt-2">
         <button type="button" onClick={onBack} className="text-sm text-slate-400 hover:text-slate-100">← Back</button>
@@ -477,7 +548,7 @@ function WizardNav({ onBack, onNext, nextLabel = 'Continue', saving }) {
 export default function SetupWizard() {
   const { company_name, app_name } = useBranding()
   const [step, setStep] = useState(1)
-  const next = () => setStep((s) => Math.min(5, s + 1))
+  const next = () => setStep((s) => Math.min(STEP_COUNT, s + 1))
   const back = () => setStep((s) => Math.max(1, s - 1))
 
   return (
@@ -491,13 +562,14 @@ export default function SetupWizard() {
         <div className="bg-slate-800/60 rounded-2xl border border-slate-700 p-6 sm:p-8 shadow-xl">
           <Stepper step={step} />
           {step === 1 && <CompanyStep onNext={next} />}
-          {step === 2 && <FirearmsStep onNext={next} onBack={back} />}
-          {step === 3 && <GuardsStep onNext={next} onBack={back} />}
-          {step === 4 && <AdminsStep onNext={next} onBack={back} />}
-          {step === 5 && <FinishStep onBack={back} />}
+          {step === 2 && <MessagingStep onNext={next} onBack={back} />}
+          {step === 3 && <FirearmsStep onNext={next} onBack={back} />}
+          {step === 4 && <GuardsStep onNext={next} onBack={back} />}
+          {step === 5 && <AdminsStep onNext={next} onBack={back} />}
+          {step === 6 && <FinishStep onBack={back} />}
         </div>
 
-        <p className="text-center text-xs text-slate-600 mt-6">Step {step} of 5</p>
+        <p className="text-center text-xs text-slate-600 mt-6">Step {step} of {STEP_COUNT}</p>
       </div>
     </div>
   )

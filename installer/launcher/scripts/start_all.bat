@@ -25,6 +25,18 @@ if not %errorlevel%==0 (
   "%PGBIN%\pg_ctl.exe" -D "%PGDATA%" -l "%LOGS%\postgres.log" -w start
 )
 
+rem --- Apply any pending database migrations (idempotent; no-op when current).-
+rem  Runs on EVERY launch, not just first run, so upgrading the app over an
+rem  existing install always brings the schema up to date before the backend
+rem  serves requests. alembic upgrade head is a fast no-op when already current;
+rem  without this, a release that adds columns would start against the old
+rem  schema and every query touching the new column would fail.
+echo Applying database updates...
+pushd "%BACKEND%"
+"%PY%" -m alembic upgrade head >> "%LOGS%\migrate.log" 2>&1
+if not %errorlevel%==0 echo   Note: a database update step reported an error - see "%LOGS%\migrate.log".
+popd
+
 rem --- Start the backend (serves API + UI) in a minimised window. ------------
 echo Starting BallistiCore...
 pushd "%BACKEND%"
@@ -46,6 +58,19 @@ goto waitloop
 start "" "http://localhost:%APP_PORT%"
 echo.
 echo BallistiCore is running at http://localhost:%APP_PORT%
+
+rem --- LAN reachability hint. The server binds all interfaces (0.0.0.0), so a
+rem  Windows Firewall inbound rule is what lets other devices connect. Warn if
+rem  it's missing so client-site troubleshooting is obvious. Best-effort: a
+rem  "show rule" query needs no elevation; if it can't run we simply skip.
+netsh advfirewall firewall show rule name="BallistiCore" >nul 2>&1
+if not %errorlevel%==0 (
+  echo.
+  echo   NOTE: no "BallistiCore" Windows Firewall rule was found. Other devices
+  echo   on the network may be unable to reach this app. To allow LAN/Wi-Fi
+  echo   access, run  scripts\firewall.bat  as administrator.
+)
+
 echo You can close this window; the app keeps running in the background.
 echo Use "Stop BallistiCore" to shut it down.
 endlocal & exit /b 0

@@ -30,6 +30,7 @@ class GuardBase(BaseModel):
     id_number: Optional[str] = None
     psira_number: Optional[str] = None
     cell_phone: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
     email: Optional[str] = None
     physical_address: Optional[str] = None
     location_id: Optional[str] = None
@@ -49,7 +50,7 @@ class GuardBase(BaseModel):
     permitted_shotgun: bool = False
 
     @field_validator(
-        'id_number', 'psira_number', 'cell_phone', 'email',
+        'id_number', 'psira_number', 'cell_phone', 'telegram_chat_id', 'email',
         'physical_address', 'location_id', 'region', 'personnel_number',
         'saps_comp_carbine', 'saps_comp_handgun', 'saps_comp_rifle', 'saps_comp_shotgun',
         mode='before',
@@ -76,6 +77,7 @@ class GuardUpdate(BaseModel):
     id_number: Optional[str] = None
     psira_number: Optional[str] = None
     cell_phone: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
     email: Optional[str] = None
     physical_address: Optional[str] = None
     location_id: Optional[str] = None

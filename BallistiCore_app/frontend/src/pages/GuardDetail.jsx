@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { getGuard, createGuard, updateGuard, setGuardAccount, resetGuardPassword, deleteGuardAccount } from '../api/guards'
 import { getFirearms } from '../api/firearms'
 import { getPermissionsForGuard, setPermission, deletePermission } from '../api/permissions'
+import { getMessagingProvider } from '../api/messaging'
 import api from '../api/client'
 
 const WEAPON_TYPES = ['carbine', 'handgun', 'rifle', 'shotgun']
 
 const BLANK_FORM = {
   first_name: '', last_name: '', id_number: '', psira_number: '',
-  cell_phone: '', location_id: '', region: '', personnel_number: '',
+  cell_phone: '', telegram_chat_id: '', location_id: '', region: '', personnel_number: '',
   username: '', password: '',
   saps_comp_carbine: '', saps_expiry_carbine: '',
   saps_comp_handgun: '', saps_expiry_handgun: '',
@@ -42,7 +43,11 @@ export default function GuardDetail() {
   const [acctBusy, setAcctBusy] = useState(false)
   const [tempPw, setTempPw] = useState('')
 
+  // Active permit-delivery provider — decides which contact field to show.
+  const [provider, setProvider] = useState('none')
+
   useEffect(() => {
+    getMessagingProvider().then((res) => setProvider(res.data.provider)).catch(() => {})
     getFirearms().then((res) => setFirearms(res.data)).catch(() => {})
     if (!isNew) {
       getGuard(id).then((res) => {
@@ -53,6 +58,7 @@ export default function GuardDetail() {
           id_number: g.id_number || '',
           psira_number: g.psira_number || '',
           cell_phone: g.cell_phone || '',
+          telegram_chat_id: g.telegram_chat_id || '',
           location_id: g.location_id || '',
           region: g.region || '',
           personnel_number: g.personnel_number || '',
@@ -333,7 +339,8 @@ export default function GuardDetail() {
               { name: 'id_number',        label: 'ID Number' },
               { name: 'psira_number',     label: 'PSIRA Number' },
               { name: 'personnel_number', label: 'Personnel Number' },
-              { name: 'cell_phone',       label: 'Contact Number' },
+              // Contact field depends on the messaging provider (see below).
+              ...(provider === 'whatsapp' ? [{ name: 'cell_phone', label: 'Contact Number (WhatsApp)' }] : []),
               { name: 'region',           label: 'Region' },
             ].map((field) => (
               <div key={field.name}>
@@ -343,6 +350,20 @@ export default function GuardDetail() {
               </div>
             ))}
           </div>
+
+          {/* Telegram delivery field — shown only when the provider is Telegram */}
+          {provider === 'telegram' && (
+            <div className="mt-4">
+              <label className="block text-xs font-medium text-slate-400 mb-1">Telegram Chat ID</label>
+              <input type="text" name="telegram_chat_id" value={form.telegram_chat_id} onChange={handleChange}
+                className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. 123456789" />
+              <p className="text-xs text-slate-500 mt-1">
+                The guard must send <span className="font-mono text-slate-300">/start</span> to your company's
+                Telegram bot first — the bot replies with their Chat ID. Permits are then delivered to that chat.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* SAPS Competency */}

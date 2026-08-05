@@ -25,7 +25,7 @@ from app.services import guards as guard_svc
 from app.services import firearms as firearm_svc
 from app.services import permissions as perm_svc
 from app.services import permit_generator as pdf_gen
-from app.services import whatsapp as wa
+from app.services import messaging_service
 from app.services import guard_auth
 from app.services.users import verify_password
 from app.core.branding import branding
@@ -212,25 +212,20 @@ def issue_firearm(
     except Exception as e:
         print(f"PDF generation warning: {e}")
 
-    # Auto-send WhatsApp if guard has a cell number
-    if guard.cell_phone and background_tasks is not None:
+    # Auto-deliver the permit via the configured messaging provider (Telegram /
+    # WhatsApp / none). The service decides the recipient and transport; the
+    # issuance flow doesn't care which provider is active.
+    if background_tasks is not None:
         background_tasks.add_task(
-            wa.send_permit_whatsapp,
+            messaging_service.send_permit,
             db=db,
             permit=permit,
-            recipient_number=guard.cell_phone,
-            guard_name=f"{guard.first_name} {guard.last_name}",
-            firearm_serial=firearm.serial_number,
+            guard=guard,
+            firearm=firearm,
         )
-    elif guard.cell_phone:
-        # Fallback: send synchronously if no background_tasks passed
-        wa.send_permit_whatsapp(
-            db=db,
-            permit=permit,
-            recipient_number=guard.cell_phone,
-            guard_name=f"{guard.first_name} {guard.last_name}",
-            firearm_serial=firearm.serial_number,
-        )
+    else:
+        # Fallback: deliver synchronously if no background_tasks passed
+        messaging_service.send_permit(db=db, permit=permit, guard=guard, firearm=firearm)
 
     return entry
 

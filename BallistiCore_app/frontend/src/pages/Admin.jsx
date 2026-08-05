@@ -9,6 +9,7 @@ import { useBranding } from '../context/BrandingContext'
 import { useLicense } from '../context/LicenseContext'
 import { hasPerm, isSuperAdmin, canAccessAdmin } from '../utils/permissions'
 import AccessDenied from '../components/AccessDenied'
+import MessagingConfigForm from '../components/MessagingConfigForm'
 
 // ── User form defaults ────────────────────────────────────────────────────────
 const BLANK_USER = {
@@ -39,7 +40,7 @@ const PERMISSION_LABELS = [
 const BLANK_COMPANY = {
   company_name: '', company_reg: '',
   psira_number: '', company_address: '', permit_prefix: '',
-  support_email: '', primary_color: '#1d4ed8',
+  support_email: '', primary_color: '#1d4ed8', session_timeout_minutes: 5,
 }
 
 // ── Tab button ────────────────────────────────────────────────────────────────
@@ -398,8 +399,14 @@ function CompanyTab() {
     setError('')
     setSuccess('')
     try {
-      await updateBranding(form)
-      await refreshBranding()   // update sidebar/login/title immediately
+      // Clamp the inactivity timeout to a whole number ≥ 1 before saving; the
+      // backend enforces the same lower bound.
+      const payload = {
+        ...form,
+        session_timeout_minutes: Math.max(1, parseInt(form.session_timeout_minutes, 10) || 5),
+      }
+      await updateBranding(payload)
+      await refreshBranding()   // update sidebar/login/title + idle timer immediately
       setSuccess('Company details saved.')
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to save.')
@@ -507,6 +514,20 @@ function CompanyTab() {
               />
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Auto-logout After
+              <span className="ml-1 text-slate-500 font-normal">(minutes of inactivity; min 1)</span>
+            </label>
+            <input
+              type="number"
+              name="session_timeout_minutes"
+              min={1}
+              value={form.session_timeout_minutes}
+              onChange={(e) => setForm((f) => ({ ...f, session_timeout_minutes: e.target.value }))}
+              className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
         </div>
       </div>
 
@@ -521,6 +542,19 @@ function CompanyTab() {
   )
 }
 
+
+// ── Messaging tab ─────────────────────────────────────────────────────────────
+function MessagingTab() {
+  return (
+    <div className="max-w-3xl space-y-4">
+      <p className="text-sm text-slate-400">
+        Choose how issued permits are delivered to your guards. Changing the provider re-validates the
+        credentials before saving. Use the Test button to confirm they work.
+      </p>
+      <MessagingConfigForm saveLabel="Save Messaging Settings" />
+    </div>
+  )
+}
 
 // ── Import Data tab ───────────────────────────────────────────────────────────
 function ImportDataTab() {
@@ -786,12 +820,14 @@ export default function Admin() {
       {/* Tabs */}
       <div className="flex border-b border-slate-700 mb-6">
         <Tab label="Users"            active={tab === 'users'}   onClick={() => setTab('users')} />
+        {superAdmin && <Tab label="Messaging"        active={tab === 'messaging'} onClick={() => setTab('messaging')} />}
         {superAdmin && <Tab label="Import Data"      active={tab === 'import'}  onClick={() => setTab('import')} />}
         {superAdmin && <Tab label="Export Data"      active={tab === 'export'}  onClick={() => setTab('export')} />}
         {superAdmin && <Tab label="Company Details"  active={tab === 'company'} onClick={() => setTab('company')} />}
       </div>
 
       {tab === 'users'             && <UsersTab currentUser={currentUser} />}
+      {tab === 'messaging' && superAdmin && <MessagingTab />}
       {tab === 'import'  && superAdmin && <ImportDataTab />}
       {tab === 'export'  && superAdmin && <ExportDataTab />}
       {tab === 'company' && superAdmin && <CompanyTab />}

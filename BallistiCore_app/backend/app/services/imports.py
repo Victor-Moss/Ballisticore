@@ -30,6 +30,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.messaging_config import get_provider
 from app.models.ammunition_type import AmmunitionType
 from app.schemas.firearm import FirearmCreate, FIREARM_TYPES
 from app.schemas.guard import GuardCreate
@@ -105,6 +106,7 @@ def _create_guard(db: Session, v: dict):
         id_number=v.get("id_number") or None,
         psira_number=v.get("psira_number") or None,
         cell_phone=v.get("cell_phone") or None,
+        telegram_chat_id=v.get("telegram_chat_id") or None,
         email=v.get("email") or None,
         physical_address=v.get("physical_address") or None,
         region=v.get("region") or None,
@@ -262,73 +264,107 @@ def _validate_firearm(values: dict, raw: dict) -> tuple[list[str], list[dict]]:
 
 # ── Sheet definitions ─────────────────────────────────────────────────────────
 # Each column: (header, field, required, example, comment)
-SHEETS = [
-    {
-        "name": "Guards",
-        "creator": _create_guard,
-        "validator": _validate_guard_competencies,
-        "columns": [
-            ("First Name *",       "first_name",       True,  "e.g. John",                None),
-            ("Last Name *",        "last_name",        True,  "Smith",                    None),
-            ("ID Number",          "id_number",        False, "8001015009087",            None),
-            ("PSIRA Number",       "psira_number",     False, "PS1234567",                "Any value (free text). Leave blank if unknown."),
-            ("Cell Phone",         "cell_phone",       False, "0821234567",               None),
-            ("Email",              "email",            False, "john.smith@example.com",   None),
-            ("Physical Address",   "physical_address", False, "12 Main Rd, Springs",      None),
-            ("Region",             "region",           False, "Gauteng",                  "Any value (free text). Leave blank if unknown."),
-            ("Personnel Number",   "personnel_number", False, "EMP-001",                  None),
-            # SAPS competency: a number + expiry pair per weapon type. Leave both
-            # blank if the guard isn't authorised for that weapon. A complete,
-            # valid pair auto-ticks that weapon's permission on import.
-            ("Shotgun Competency Number", "saps_comp_shotgun",   False, "C7021766",   _COMP_COMMENT),
-            ("Shotgun Competency Expiry", "saps_expiry_shotgun", False, "2026-12-31", _DATE_COMMENT),
-            ("Carbine Competency Number", "saps_comp_carbine",   False, "D1234567",   _COMP_COMMENT),
-            ("Carbine Competency Expiry", "saps_expiry_carbine", False, "2026-12-31", _DATE_COMMENT),
-            ("Rifle Competency Number",   "saps_comp_rifle",     False, "E2345678",   _COMP_COMMENT),
-            ("Rifle Competency Expiry",   "saps_expiry_rifle",   False, "2026-12-31", _DATE_COMMENT),
-            ("Handgun Competency Number", "saps_comp_handgun",   False, "F3456789",   _COMP_COMMENT),
-            ("Handgun Competency Expiry", "saps_expiry_handgun", False, "2026-12-31", _DATE_COMMENT),
-        ],
-    },
-    {
-        "name": "Firearms",
-        "creator": _create_firearm,
-        "validator": _validate_firearm,
-        "columns": [
-            ("Serial Number *",    "serial_number",      True,  "e.g. GLK-100234", None),
-            ("Make *",             "make",               True,  "Glock",           None),
-            ("Model",              "model",              False, "17",              None),
-            ("Type",               "type",               False, "handgun",         "One of: carbine, handgun, rifle, shotgun (or leave blank)"),
-            ("Calibre",            "calibre",            False, "9mm",             None),
-            ("Licence Number",     "license_number",     False, "LIC-2024-001",    None),
-            ("Licence Issue Date", "license_issue_date", False, "2024-01-15",      "Issue date, e.g. 2024-01-15. Leave blank if unknown."),
-            ("Ammunition Type",    "ammunition_type",    False, "9mm FMJ",         "Must match an existing Ammunition Type name (Firearms → Ammunition Types). Leave blank if none."),
-            ("Description",        "description",        False, "Duty pistol",     None),
-        ],
-    },
-    {
-        "name": "Users",
-        "creator": _create_user,
-        "columns": [
-            ("Username *",         "username",         True,  "e.g. joperator",          None),
-            ("Password *",         "password",         True,  "ChangeMe!23",             "At least 6 characters"),
-            ("Email",              "email",            False, "joperator@example.com",   None),
-            ("Is Admin",           "is_admin",         False, "no",                      "yes = full administrator, no = operator"),
-            ("Personnel Number",   "personnel_number", False, "EMP-100",                 None),
-            ("PSIRA Number",       "psira_number",     False, "PS9988776",               None),
-            ("Competency",         "competency",       False, "Grade C",                 None),
-            ("Phone Number",       "phone_number",     False, "0837654321",              None),
-            ("ID Number",          "id_number",        False, "9002025009088",           None),
-        ],
-    },
-]
+#
+# The Guards sheet's delivery-contact column depends on the configured messaging
+# provider (Settings → Messaging): a Telegram Chat ID column, a WhatsApp/Cell
+# Phone column, or no contact column at all (provider "none"). The sheet set is
+# therefore built per-request via build_sheets() rather than fixed at import time.
+
+_TELEGRAM_COMMENT = ("The guard's Telegram Chat ID. The guard must first send /start "
+                     "to your company's Telegram bot, which replies with their Chat ID.")
+
+
+def _guard_contact_column(provider: str):
+    """The provider-appropriate delivery-contact column for the Guards sheet,
+    or None when the provider is 'none' (no delivery field needed)."""
+    if provider == "telegram":
+        return ("Telegram Chat ID", "telegram_chat_id", False, "123456789", _TELEGRAM_COMMENT)
+    if provider == "whatsapp":
+        return ("Cell Phone", "cell_phone", False, "0821234567", None)
+    return None
+
+
+def _guard_columns(provider: str):
+    cols = [
+        ("First Name *",       "first_name",       True,  "e.g. John",                None),
+        ("Last Name *",        "last_name",        True,  "Smith",                    None),
+        ("ID Number",          "id_number",        False, "8001015009087",            None),
+        ("PSIRA Number",       "psira_number",     False, "PS1234567",                "Any value (free text). Leave blank if unknown."),
+    ]
+    contact = _guard_contact_column(provider)
+    if contact:
+        cols.append(contact)
+    cols += [
+        ("Email",              "email",            False, "john.smith@example.com",   None),
+        ("Physical Address",   "physical_address", False, "12 Main Rd, Springs",      None),
+        ("Region",             "region",           False, "Gauteng",                  "Any value (free text). Leave blank if unknown."),
+        ("Personnel Number",   "personnel_number", False, "EMP-001",                  None),
+        # SAPS competency: a number + expiry pair per weapon type. Leave both
+        # blank if the guard isn't authorised for that weapon. A complete,
+        # valid pair auto-ticks that weapon's permission on import.
+        ("Shotgun Competency Number", "saps_comp_shotgun",   False, "C7021766",   _COMP_COMMENT),
+        ("Shotgun Competency Expiry", "saps_expiry_shotgun", False, "2026-12-31", _DATE_COMMENT),
+        ("Carbine Competency Number", "saps_comp_carbine",   False, "D1234567",   _COMP_COMMENT),
+        ("Carbine Competency Expiry", "saps_expiry_carbine", False, "2026-12-31", _DATE_COMMENT),
+        ("Rifle Competency Number",   "saps_comp_rifle",     False, "E2345678",   _COMP_COMMENT),
+        ("Rifle Competency Expiry",   "saps_expiry_rifle",   False, "2026-12-31", _DATE_COMMENT),
+        ("Handgun Competency Number", "saps_comp_handgun",   False, "F3456789",   _COMP_COMMENT),
+        ("Handgun Competency Expiry", "saps_expiry_handgun", False, "2026-12-31", _DATE_COMMENT),
+    ]
+    return cols
+
+
+def build_sheets(provider: str | None = None) -> list[dict]:
+    """The import/export sheet definitions. The Guards contact column reflects the
+    active messaging provider (defaults to the currently configured one)."""
+    if provider is None:
+        provider = get_provider()
+    return [
+        {
+            "name": "Guards",
+            "creator": _create_guard,
+            "validator": _validate_guard_competencies,
+            "columns": _guard_columns(provider),
+        },
+        {
+            "name": "Firearms",
+            "creator": _create_firearm,
+            "validator": _validate_firearm,
+            "columns": [
+                ("Serial Number *",    "serial_number",      True,  "e.g. GLK-100234", None),
+                ("Make *",             "make",               True,  "Glock",           None),
+                ("Model",              "model",              False, "17",              None),
+                ("Type",               "type",               False, "handgun",         "One of: carbine, handgun, rifle, shotgun (or leave blank)"),
+                ("Calibre",            "calibre",            False, "9mm",             None),
+                ("Licence Number",     "license_number",     False, "LIC-2024-001",    None),
+                ("Licence Issue Date", "license_issue_date", False, "2024-01-15",      "Issue date, e.g. 2024-01-15. Leave blank if unknown."),
+                ("Ammunition Type",    "ammunition_type",    False, "9mm FMJ",         "Must match an existing Ammunition Type name (Firearms → Ammunition Types). Leave blank if none."),
+                ("Description",        "description",        False, "Duty pistol",     None),
+            ],
+        },
+        {
+            "name": "Users",
+            "creator": _create_user,
+            "columns": [
+                ("Username *",         "username",         True,  "e.g. joperator",          None),
+                ("Password *",         "password",         True,  "ChangeMe!23",             "At least 6 characters"),
+                ("Email",              "email",            False, "joperator@example.com",   None),
+                ("Is Admin",           "is_admin",         False, "no",                      "yes = full administrator, no = operator"),
+                ("Personnel Number",   "personnel_number", False, "EMP-100",                 None),
+                ("PSIRA Number",       "psira_number",     False, "PS9988776",               None),
+                ("Competency",         "competency",       False, "Grade C",                 None),
+                ("Phone Number",       "phone_number",     False, "0837654321",              None),
+                ("ID Number",          "id_number",        False, "9002025009088",           None),
+            ],
+        },
+    ]
 
 
 # ── Template generation ───────────────────────────────────────────────────────
 def build_template() -> bytes:
     wb = Workbook()
     wb.remove(wb.active)  # drop the default sheet
-    for sheet in SHEETS:
+    for sheet in build_sheets():
         ws = wb.create_sheet(title=sheet["name"])
         cols = sheet["columns"]
         # Header row
@@ -410,7 +446,7 @@ def import_workbook(db: Session, data: bytes) -> dict:
     expired_review: list[dict] = []
     error_sheets: dict = {}  # sheet name -> {"columns": cols, "rows": [(cells, msg)]}
 
-    for sheet in SHEETS:
+    for sheet in build_sheets():
         name = sheet["name"]
         cols = sheet["columns"]
         validator = sheet.get("validator")

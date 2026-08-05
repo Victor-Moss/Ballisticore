@@ -7,6 +7,7 @@ const DEFAULTS = {
   permit_prefix: 'BC',
   primary_color: '#1d4ed8',
   cit_enabled: false,
+  session_timeout_minutes: 5,
   // Default true so a failed/blank branding fetch never traps the user in the
   // setup wizard; the real value comes from the server (false on a fresh install).
   setup_completed: true,

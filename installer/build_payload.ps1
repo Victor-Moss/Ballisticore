@@ -77,7 +77,7 @@ if (Test-Path $PBackend) { Remove-Item $PBackend -Recurse -Force }
 # robocopy exit codes 0-7 are success; treat 8+ as failure.
 robocopy $Backend $PBackend /E /NFL /NDL /NJH /NJS /NP `
   /XD '.venv' '__pycache__' '.pytest_cache' 'tests' 'permits' `
-  /XF '.env' '*.pyc' | Out-Null
+  /XF '.env' 'config.json' '*.pyc' | Out-Null
 if ($LASTEXITCODE -ge 8) { Fail "robocopy failed (code $LASTEXITCODE)." }
 $global:LASTEXITCODE = 0
 
@@ -89,7 +89,7 @@ Step 'Installing backend runtime dependencies into bundled Python'
 if ($LASTEXITCODE -ne 0) { Fail 'pip install of runtime dependencies failed.' }
 
 # Sanity check: can the bundled Python import the app and launch tooling?
-& $PyExe -c "import fastapi, uvicorn, alembic, psycopg, twilio, reportlab; print('deps OK')"
+& $PyExe -c "import fastapi, uvicorn, alembic, psycopg, twilio, httpx, reportlab; print('deps OK')"
 if ($LASTEXITCODE -ne 0) { Fail 'Bundled Python could not import the required packages.' }
 
 Step 'Payload staged successfully.'

@@ -15,6 +15,9 @@ class Guard(Base):
     id_number: Mapped[Optional[str]] = mapped_column(String(20), unique=True, nullable=True)
     psira_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     cell_phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # Telegram Chat ID — the delivery address when the messaging provider is
+    # Telegram. The guard must send /start to the company bot first to obtain it.
+    telegram_chat_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     physical_address: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     location_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("locations.id"), nullable=True)

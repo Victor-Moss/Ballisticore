@@ -15,7 +15,7 @@
 ; ============================================================================
 
 #define AppName        "BallistiCore"
-#define AppVersion     "1.6.0"
+#define AppVersion     "1.7.0"
 #define AppPublisher   "BallistiCore"
 #define AppURL         "https://ballisticore.co.za"
 
@@ -156,8 +156,32 @@ begin
   end;
 end;
 
+{ Add/remove the Windows Firewall inbound rule so other devices on the LAN/Wi-Fi
+  can reach the app. netsh needs elevation, so run firewall.bat via cmd.exe with
+  the 'runas' verb (a single UAC prompt). The extra outer quotes let cmd handle a
+  quoted .bat path that may contain spaces. Best-effort: if the user declines,
+  the app still works locally, so we don't fail the install. }
+procedure RunFirewall(const Mode: String);
+var
+  ResultCode: Integer;
+begin
+  ShellExec('runas', ExpandConstant('{cmd}'),
+    '/c ""' + ExpandConstant('{app}\scripts\firewall.bat') + '" ' + Mode + '"',
+    ExpandConstant('{app}\scripts'), SW_HIDE, ewWaitUntilTerminated, ResultCode);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
     WriteBrandingJson();
+    RunFirewall('add');
+  end;
+end;
+
+{ Remove the firewall rule on uninstall. Runs while the scripts folder still exists. }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    RunFirewall('remove');
 end;

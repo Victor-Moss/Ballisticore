@@ -12,14 +12,16 @@ from app.services import issuance as svc
 PASSWORD = "testpass"
 
 
-def _issue(db, guard, firearm, user):
+def _issue(db, guard, firearm, user, guard_password=None):
     """Helper: issue a firearm and return the register entry.
 
     The issuing staff member's e-signature (current_user + their password) is
     mandatory on every issue, so it's supplied here. Guards created via
-    make_guard have no sign-in account, so no guard signature is required."""
+    make_guard have no sign-in account, so no guard signature is required;
+    pass guard_password when the guard has an account and must sign."""
     return svc.issue_firearm(db, guard.id, firearm.id, user.id,
-                             current_user=user, issuer_password=PASSWORD)
+                             current_user=user, issuer_password=PASSWORD,
+                             guard_password=guard_password)
 
 
 class TestPermitNumberGeneration:
@@ -215,3 +217,80 @@ class TestReturnFlow:
         with pytest.raises(HTTPException) as exc:
             svc.return_firearm(db, "nonexistent-id", user.id)
         assert exc.value.status_code == 404
+
+
+class TestReturnSignatureEnforcement:
+    """Dual e-signature is mandatory on return (FCA / PSIRA). The return must be
+    blocked and nothing mutated if either required signature is missing/wrong."""
+
+    def _issue_and_register_intact(self, db):
+        user = make_user(db)
+        guard = make_guard(db)
+        firearm = make_firearm(db)
+        make_permission(db, guard.id, firearm.id)
+        _issue(db, guard, firearm, user)
+        return user, guard, firearm
+
+    def _register_count(self, db):
+        from app.models.register import Register
+        return db.query(Register).count()
+
+    def test_return_blocked_without_staff_signature(self, db):
+        """No staff password → 400 and the firearm stays issued."""
+        user, _guard, firearm = self._issue_and_register_intact(db)
+        with pytest.raises(HTTPException) as exc:
+            svc.return_firearm(db, firearm.id, user.id, current_user=user)
+        assert exc.value.status_code == 400
+        assert self._register_count(db) == 1  # nothing removed
+
+    def test_return_blocked_with_wrong_staff_password(self, db):
+        """Wrong staff password → 403 and the firearm stays issued."""
+        user, _guard, firearm = self._issue_and_register_intact(db)
+        with pytest.raises(HTTPException) as exc:
+            svc.return_firearm(db, firearm.id, user.id, current_user=user,
+                               staff_password="not-the-password")
+        assert exc.value.status_code == 403
+        assert self._register_count(db) == 1
+
+    def test_return_blocked_when_signed_in_guard_signature_missing(self, db):
+        """A guard with a sign-in account must also sign — missing guard
+        password → 400 and the firearm stays issued, even though the staff
+        member signed correctly."""
+        from app.services import guard_auth
+        user = make_user(db)
+        guard = make_guard(db)
+        guard_auth.set_account(db, guard, username="jsmith", password="guardpass")
+        firearm = make_firearm(db)
+        make_permission(db, guard.id, firearm.id)
+        _issue(db, guard, firearm, user, guard_password="guardpass")
+
+        with pytest.raises(HTTPException) as exc:
+            svc.return_firearm(db, firearm.id, user.id, current_user=user,
+                               staff_password=PASSWORD)  # guard_password omitted
+        assert exc.value.status_code == 400
+        assert self._register_count(db) == 1
+
+    def test_return_stores_both_signatures_on_permit_and_history(self, db):
+        """Happy path with a signed-in guard: both return signatures are
+        persisted on the permit and the RETURNED history record."""
+        from app.services import guard_auth
+        from app.models.permit import Permit
+        from app.models.register_history import RegisterHistory
+        user = make_user(db)
+        guard = make_guard(db)
+        guard_auth.set_account(db, guard, username="jsmith2", password="guardpass")
+        firearm = make_firearm(db)
+        make_permission(db, guard.id, firearm.id)
+        _issue(db, guard, firearm, user, guard_password="guardpass")
+
+        svc.return_firearm(db, firearm.id, user.id, current_user=user,
+                           staff_password=PASSWORD, guard_password="guardpass")
+
+        permit = db.query(Permit).first()
+        assert permit.return_guard_signed and permit.return_guard_signed_at is not None
+        assert permit.return_received_signed and permit.return_received_signed_at is not None
+        assert permit.return_received_by == user.id
+
+        returned = db.query(RegisterHistory).filter(RegisterHistory.action == "RETURNED").one()
+        assert returned.guard_signed and returned.guard_signed_at is not None    # returning guard
+        assert returned.issuer_signed and returned.issuer_signed_at is not None  # receiving staff

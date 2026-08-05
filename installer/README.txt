@@ -13,7 +13,7 @@ data stays on this machine.
 
 INSTALLING
 ----------
-1. Double-click  BallistiCore-Setup-1.3.0.exe
+1. Double-click  BallistiCore-Setup-1.7.0.exe
 2. Choose where to install it (the default is fine).
 3. Enter your company name and permit prefix when asked.
 4. Click Install and wait for it to finish (the first-time database
@@ -41,19 +41,23 @@ STOPPING THE APP
   restart/shut down the PC.
 
 
-USING IT FROM OTHER DEVICES ON THE SAME NETWORK (optional)
-----------------------------------------------------------
-By default the app is reachable only from this PC. To allow other
-computers or phones on the same office network to use it:
-  1. Find this PC's network address (run  ipconfig  -> IPv4 Address).
-  2. Edit  <install folder>\scripts\_env.bat  and change
-        set "APP_HOST=127.0.0.1"
-     to
-        set "APP_HOST=0.0.0.0"
-  3. Add the new address to CORS in  <install folder>\backend\.env :
-        CORS_ORIGINS=http://localhost:8000,http://YOUR-PC-IP:8000
-  4. Allow port 8000 through Windows Firewall if prompted.
-  5. Other devices then open:  http://YOUR-PC-IP:8000
+USING IT FROM OTHER DEVICES ON THE SAME NETWORK
+-----------------------------------------------
+Other computers, tablets and phones on the same office network (wired or
+Wi-Fi) can use BallistiCore out of the box - no extra setup needed. The
+installer already opened the required Windows Firewall port for you.
+  1. Find this PC's network address (run  ipconfig  -> IPv4 Address),
+     e.g. 192.168.1.20. The Finish screen of the in-app setup wizard also
+     shows this address.
+  2. On the other device, open a web browser and go to:
+        http://YOUR-PC-IP:8000       (e.g. http://192.168.1.20:8000)
+  3. Sign in as usual. Everyone shares the same data on this PC, which
+     must be switched on and running BallistiCore.
+
+If a device can't connect, confirm both are on the same network and that
+the "BallistiCore" inbound firewall rule is present (it is added during
+installation; you can re-add it by running  scripts\firewall.bat  as
+administrator).
 
 
 WHATSAPP PERMIT DELIVERY (optional)
@@ -67,6 +71,25 @@ To enable it, edit  <install folder>\backend\.env :
 Then use "Stop BallistiCore" and start it again.
 (Sending the PDF as an attachment additionally requires a public URL in
 PUBLIC_BASE_URL; without it, guards receive a text notification.)
+
+
+ELECTRONIC SIGNATURES ON ISSUE & RETURN
+---------------------------------------
+When a firearm is issued AND when it is returned, BallistiCore captures two
+electronic signatures - the staff member handling it and the guard - by each
+entering their own password. Both are stored against the permit and printed
+on the permit PDF, as required for Firearms Control Act / PSIRA records.
+
+  - The staff member's signature is ALWAYS required; the action cannot be
+    completed without it.
+  - The guard's signature is required as soon as that guard has a sign-in
+    account. A guard who does not yet have an account can still be issued to
+    and can still return a firearm - their side is recorded as "unsigned" and
+    the screen shows an amber notice.
+
+To ensure every issue and return is fully dual-signed, give each guard a
+sign-in account (Guards > select the guard > set up sign-in). Until then the
+unsigned notice is your reminder that a guard account is still outstanding.
 
 
 BACKING UP YOUR DATA

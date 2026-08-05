@@ -63,7 +63,6 @@ def return_firearm(
         firearm_returned_correct=data.firearm_returned_correct,
         in_order=data.in_order,
         remarks=data.remarks,
-        ammunition_returned=data.ammunition_returned,
         permit_returned=data.permit_returned,
         current_user=current_user,
         staff_password=data.staff_password,

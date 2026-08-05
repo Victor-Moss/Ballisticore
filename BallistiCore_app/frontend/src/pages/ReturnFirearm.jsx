@@ -12,7 +12,7 @@ export default function ReturnFirearm() {
   const [form, setForm] = useState({
     firearm_id: '', notes: '', rounds_returned: '',
     firearm_returned_correct: '', in_order: '', remarks: '',
-    ammunition_returned: '', permit_returned: '',
+    permit_returned: '',
     guard_password: '', staff_password: '',
   })
   const [loading, setLoading] = useState(true)
@@ -50,7 +50,6 @@ export default function ReturnFirearm() {
         firearm_returned_correct: form.firearm_returned_correct !== '' ? form.firearm_returned_correct === 'true' : null,
         in_order: form.in_order !== '' ? form.in_order === 'true' : null,
         remarks: form.remarks || null,
-        ammunition_returned: form.ammunition_returned !== '' ? parseInt(form.ammunition_returned) : null,
         permit_returned: form.permit_returned !== '' ? form.permit_returned === 'true' : null,
         guard_password: form.guard_password || null,
         staff_password: form.staff_password || null,
@@ -104,12 +103,6 @@ export default function ReturnFirearm() {
               <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Rounds Returned</label>
                 <input type="number" min="0" name="rounds_returned" value={form.rounds_returned} onChange={handleChange}
-                  className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1">Ammunition Returned</label>
-                <input type="number" min="0" name="ammunition_returned" value={form.ammunition_returned} onChange={handleChange}
                   className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="0" />
               </div>

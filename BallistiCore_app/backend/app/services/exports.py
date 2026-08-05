@@ -44,7 +44,7 @@ from app.models.permit import Permit
 from app.models.register import Register
 from app.models.register_history import RegisterHistory
 from app.models.user import User
-from app.services.imports import SHEETS, WEAPON_TYPES
+from app.services.imports import build_sheets, WEAPON_TYPES
 
 logger = logging.getLogger("ballisticore.export")
 
@@ -128,7 +128,7 @@ def _companion_header(fk_column: str, target_table: str) -> str:
 def _guards_dataset(db: Session) -> dict:
     """Guards columns derived from the import template (header, field) pairs, so
     this export round-trips back through the import."""
-    guard_sheet = next(s for s in SHEETS if s["name"] == "Guards")
+    guard_sheet = next(s for s in build_sheets() if s["name"] == "Guards")
     cols = [(header, field) for (header, field, *_ ) in guard_sheet["columns"]]
     headers = [h for h, _ in cols]
     rows = [

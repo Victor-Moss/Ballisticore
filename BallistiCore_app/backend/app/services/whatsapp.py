@@ -20,6 +20,7 @@ from pathlib import Path
 from jose import jwt
 from sqlalchemy.orm import Session
 from app.core.config import settings
+from app.core.messaging_config import whatsapp_credentials
 from app.models.permit import Permit
 
 PERMIT_PDF_TOKEN_SCOPE = "permit_pdf"
@@ -36,7 +37,8 @@ def _format_number(number: str) -> str:
 
 
 def _credentials_configured() -> bool:
-    return bool(settings.TWILIO_ACCOUNT_SID and settings.TWILIO_AUTH_TOKEN)
+    sid, token, _ = whatsapp_credentials()
+    return bool(sid and token)
 
 
 def build_signed_pdf_url(permit_id: str) -> str | None:
@@ -57,15 +59,16 @@ def build_signed_pdf_url(permit_id: str) -> str | None:
 def _send_text(recipient_number: str, body: str) -> bool:
     """Send a plain WhatsApp text message. Returns False (no-op) when Twilio
     credentials are not configured, so callers never crash in dev."""
-    if not _credentials_configured():
+    sid, token, from_number = whatsapp_credentials()
+    if not (sid and token):
         print("WhatsApp: Twilio credentials not configured — skipping send")
         return False
     try:
         from twilio.rest import Client
-        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        client = Client(sid, token)
         message = client.messages.create(
             body=body,
-            from_=settings.TWILIO_WHATSAPP_FROM,
+            from_=from_number,
             to=_format_number(recipient_number),
         )
         print(f"WhatsApp: sent text to {_format_number(recipient_number)} — SID: {message.sid}")
@@ -108,7 +111,8 @@ def send_permit_whatsapp(
     a media URL when PUBLIC_BASE_URL is configured and the PDF exists;
     otherwise sends text only. Updates permit.whatsapp_sent on success.
     """
-    if not _credentials_configured():
+    sid, token, from_number = whatsapp_credentials()
+    if not (sid and token):
         print("WhatsApp: Twilio credentials not configured — skipping send")
         return False
 
@@ -120,7 +124,7 @@ def send_permit_whatsapp(
 
     try:
         from twilio.rest import Client
-        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        client = Client(sid, token)
 
         to_number = _format_number(recipient_number)
         body = (
@@ -134,7 +138,7 @@ def send_permit_whatsapp(
 
         kwargs = {
             "body": body,
-            "from_": settings.TWILIO_WHATSAPP_FROM,
+            "from_": from_number,
             "to": to_number,
         }
         if pdf_url:

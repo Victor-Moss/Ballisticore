@@ -7,7 +7,7 @@ from io import BytesIO
 from openpyxl import load_workbook
 
 from app.services import exports as svc
-from app.services.imports import SHEETS
+from app.services.imports import build_sheets
 from app.models.guard import Guard
 from app.models.user import User
 from app.models.firearm import Firearm
@@ -35,7 +35,7 @@ def test_excel_has_a_sheet_per_entity_and_guards_match_import_columns(db):
     assert expected.issubset(set(wb.sheetnames))
 
     # Guards columns are derived from the import template — they must match.
-    import_headers = [h for (h, *_ ) in next(s for s in SHEETS if s["name"] == "Guards")["columns"]]
+    import_headers = [h for (h, *_ ) in next(s for s in build_sheets() if s["name"] == "Guards")["columns"]]
     guard_headers = [c.value for c in wb["Guards"][1]]
     assert guard_headers == import_headers
 
@@ -97,7 +97,7 @@ def test_guards_sheet_unchanged_no_fk_uuids(db):
     # there are no opaque FK UUIDs to humanise — the sheet stays as-is.
     _seed(db)
     headers = _ds(svc.collect_datasets(db), "Guards")["headers"]
-    import_headers = [h for (h, *_ ) in next(s for s in SHEETS if s["name"] == "Guards")["columns"]]
+    import_headers = [h for (h, *_ ) in next(s for s in build_sheets() if s["name"] == "Guards")["columns"]]
     assert headers == import_headers
     assert not any(h.endswith("_id") for h in headers)
 

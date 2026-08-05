@@ -4,11 +4,13 @@ import { useAuth } from '../context/AuthContext'
 import { useBranding } from '../context/BrandingContext'
 import { useLicense } from '../context/LicenseContext'
 import { useTheme } from '../context/ThemeContext'
-import { hasPerm, canAccessAdmin } from '../utils/permissions'
+import { hasPerm, canAccessAdmin, isSuperAdmin } from '../utils/permissions'
+import { shutdownServer } from '../api/admin'
+import IdleTimer from './IdleTimer'
 import Logo from './Logo'
 import {
   LayoutDashboard, ClipboardList, Crosshair, Undo2, History,
-  FileText, Shield, Archive, Settings, LogOut, Sun, Moon, Menu, X,
+  FileText, Shield, Archive, Settings, LogOut, Sun, Moon, Menu, X, Power, Loader2,
 } from 'lucide-react'
 
 function ThemeToggle() {
@@ -23,6 +25,101 @@ function ThemeToggle() {
     >
       {dark ? <Sun size={18} /> : <Moon size={18} />}
     </button>
+  )
+}
+
+// Power button + confirmation modal. Super-admin only (also enforced on the
+// backend). On confirm it calls the shutdown endpoint and shows a "shutting
+// down" message; the local session is cleared so this browser can't keep using
+// a token that the restarted server will reject anyway.
+function PowerButton() {
+  const [confirming, setConfirming] = useState(false)
+  const [status, setStatus] = useState('idle') // idle | shutting | done | error
+  const [error, setError] = useState('')
+
+  const clearSession = () => {
+    localStorage.removeItem('bc_token')
+    localStorage.removeItem('bc_user')
+  }
+
+  const close = () => { setConfirming(false); setStatus('idle'); setError('') }
+
+  const doShutdown = async () => {
+    setStatus('shutting'); setError('')
+    try {
+      await shutdownServer()
+      clearSession()
+      setStatus('done')
+    } catch (err) {
+      // No response usually means the server exited before replying — that's
+      // still a successful shutdown. A real HTTP error (e.g. 403) is shown.
+      if (!err.response) {
+        clearSession()
+        setStatus('done')
+      } else {
+        setError(err.response?.data?.detail || 'Could not shut down the server.')
+        setStatus('error')
+      }
+    }
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setConfirming(true)}
+        title="Shut down BallistiCore"
+        aria-label="Shut down BallistiCore"
+        className="grid place-items-center h-9 w-9 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-800/60 transition-colors"
+      >
+        <Power size={18} />
+      </button>
+
+      {confirming && (
+        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-xl w-full max-w-md p-6">
+            {status === 'done' ? (
+              <div className="text-center space-y-3">
+                <div className="mx-auto w-12 h-12 rounded-full bg-amber-500/15 border border-amber-500/40 grid place-items-center">
+                  <Power size={22} className="text-amber-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-100">Server is shutting down…</h3>
+                <p className="text-sm text-slate-400">
+                  BallistiCore is stopping and all sessions have ended. You can close this window. To use it
+                  again, start it from the desktop shortcut — you'll be asked to sign in.
+                </p>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-lg font-semibold text-slate-100 mb-2">Stop BallistiCore?</h3>
+                <p className="text-sm text-slate-400 mb-5">
+                  Are you sure you want to stop BallistiCore? All active sessions will be ended.
+                </p>
+                {error && (
+                  <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2 mb-4">{error}</p>
+                )}
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={close}
+                    disabled={status === 'shutting'}
+                    className="text-sm text-slate-300 hover:text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={doShutdown}
+                    disabled={status === 'shutting'}
+                    className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg disabled:opacity-50"
+                  >
+                    {status === 'shutting' ? <Loader2 size={15} className="animate-spin" /> : <Power size={15} />}
+                    {status === 'shutting' ? 'Stopping…' : 'Stop server'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -64,6 +161,9 @@ export default function Layout({ children }) {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Inactivity auto-logout — only mounted here, so it never runs on /login */}
+      <IdleTimer />
+
       {/* Backdrop — only rendered on mobile when the drawer is open */}
       {sidebarOpen && (
         <div
@@ -163,6 +263,7 @@ export default function Layout({ children }) {
           </button>
           <div className="ml-auto flex items-center gap-1">
             <ThemeToggle />
+            {isSuperAdmin(user) && <PowerButton />}
           </div>
         </header>
         {/* License banner — red & persistent in read-only (expired/invalid),
