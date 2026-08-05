@@ -6,14 +6,48 @@ PostgreSQL database, no seeding needed, no cleanup required.
 """
 import pytest
 import uuid
+from datetime import date, timedelta
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
 
+from app.core import license as lic
 from app.core.database import Base, get_db
 from app.core.auth import create_access_token
 from app.main import app
+
+
+# ── Licensing ────────────────────────────────────────────────────────────────
+# The test suite must never depend on the machine it runs on. license.key is
+# gitignored, so whether one exists — and which company it is bound to — varies
+# per machine, and the binding is checked against branding.json's company_name.
+# On a mismatch (or with no key at all) the licence resolves to INVALID/MISSING,
+# the read-only middleware in app.main rejects every POST/PUT/PATCH/DELETE with
+# a 403, and every write-path test fails. The 403s look like an auth bug, which
+# makes the real cause needlessly hard to spot.
+#
+# So licensing is neutralised for the whole run: _verify is replaced with one
+# that reports a valid, far-from-expiry licence. Patching _verify rather than
+# the _verified cache is deliberate — app.main's lifespan calls license.reload()
+# on startup, which recomputes the cache through _verify, so a patch applied to
+# the cache alone would be overwritten the moment TestClient starts the app.
+
+@pytest.fixture(scope="session", autouse=True)
+def _licensed():
+    """Report an active licence for the whole session, whatever is on disk."""
+    def _always_valid() -> tuple:
+        # (ok, company, expires, reason) — matching license._verify's contract.
+        # Well beyond WARN_DAYS so the state is ACTIVE, never WARNING.
+        return (True, "BallistiCore Test Co", date.today() + timedelta(days=3650), "")
+
+    mp = pytest.MonkeyPatch()
+    mp.setattr(lic, "_verify", _always_valid)
+    lic._verified = None  # drop anything cached from a real key before patching
+    yield
+    mp.undo()
+    lic._verified = None
+
 
 # ── In-memory SQLite engine ──────────────────────────────────────────────────
 # StaticPool ensures every connection reuses the same underlying DB connection,
